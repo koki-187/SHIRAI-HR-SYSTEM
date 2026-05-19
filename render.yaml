@@ -1,4 +1,5 @@
 services:
+  # ---- Backend: FastAPI ----
   - type: web
     name: hotelscope-api
     runtime: python
@@ -7,6 +8,25 @@ services:
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: ALLOWED_ORIGINS
-        sync: false
-      - key: PYTHON_VERSION
-        value: 3.11.0
+        sync: false   # Vercel/Render frontend URL を後から設定
+
+  # ---- Frontend: Next.js ----
+  - type: web
+    name: hotelscope-frontend
+    runtime: node
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: 20.11.0
+      - key: NEXTAUTH_SECRET
+        generateValue: true
+      - key: NEXTAUTH_URL
+        sync: false   # このサービスの URL を後から設定
+      - key: BACKEND_URL
+        sync: false   # hotelscope-api の URL を後から設定
+      - key: NEXT_PUBLIC_BACKEND_URL
+        sync: false   # BACKEND_URL と同じ値
+      - key: DATA_DIR
+        value: /tmp/hotelscope
