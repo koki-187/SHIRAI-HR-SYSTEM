@@ -15,11 +15,16 @@ export async function POST(req: NextRequest) {
 
     // サーバー側でAPIキーを取得（クライアントから送られたキーより優先）
     let geminiKey = body.gemini_api_key || '';
-    if (!geminiKey && !(session.user as any).isAdmin) {
-      const userId = parseInt((session.user as any).id);
-      const enc = await getGeminiKey(userId);
-      if (enc) {
-        try { geminiKey = decryptApiKey(enc); } catch { /* fallback */ }
+    if (!geminiKey) {
+      if ((session.user as any).isAdmin) {
+        // 管理者: 環境変数のキーを使用
+        geminiKey = process.env.ADMIN_GEMINI_KEY || '';
+      } else {
+        const userId = parseInt((session.user as any).id);
+        const enc = await getGeminiKey(userId);
+        if (enc) {
+          try { geminiKey = decryptApiKey(enc); } catch { /* fallback */ }
+        }
       }
     }
 

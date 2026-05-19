@@ -6,6 +6,7 @@ import { saveHistory, getHistory, deleteHistory } from '@/lib/db';
 export async function GET() {
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if ((session.user as any).isAdmin) return NextResponse.json([]);
   const userId = parseInt((session.user as any).id);
   return NextResponse.json(await getHistory(userId));
 }
@@ -13,6 +14,7 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if ((session.user as any).isAdmin) return NextResponse.json({ ok: true });
   const userId = parseInt((session.user as any).id);
   const { id, location, search_address, params, result } = await req.json();
   await saveHistory(userId, id, location, search_address, params, result);
@@ -22,6 +24,7 @@ export async function POST(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if ((session.user as any).isAdmin) return NextResponse.json({ ok: true });
   const userId = parseInt((session.user as any).id);
   const { id } = await req.json();
   await deleteHistory(id, userId);
