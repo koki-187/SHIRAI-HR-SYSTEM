@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { SurveyParams } from '@/types';
 
 interface Props {
@@ -20,9 +20,54 @@ export default function SurveyForm({ onSubmit, loading }: Props) {
     gemini_api_key: '',
   });
 
+  const [hasApiKey, setHasApiKey] = useState<boolean | null>(null);
+  const [showKeyInput, setShowKeyInput] = useState(false);
+  const [newKey, setNewKey] = useState('');
+  const [keyMsg, setKeyMsg] = useState('');
+  const [savingKey, setSavingKey] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/user/profile').then(r => r.json()).then(d => {
+      setHasApiKey(d.hasKey ?? false);
+    }).catch(() => setHasApiKey(false));
+  }, []);
+
+  const saveApiKey = async () => {
+    if (!newKey.trim()) return;
+    setSavingKey(true);
+    const res = await fetch('/api/user/profile', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ apiKey: newKey.trim() }),
+    });
+    const data = await res.json();
+    setSavingKey(false);
+    if (res.ok) {
+      setHasApiKey(true);
+      setShowKeyInput(false);
+      setNewKey('');
+      setKeyMsg('APIキーを保存しました');
+      setTimeout(() => setKeyMsg(''), 3000);
+    } else {
+      setKeyMsg(data.error || '保存に失敗しました');
+    }
+  };
+
+  const deleteApiKey = async () => {
+    if (!confirm('保存済みのAPIキーを削除しますか？')) return;
+    await fetch('/api/user/profile', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ apiKey: '' }),
+    });
+    setHasApiKey(false);
+    setKeyMsg('APIキーを削除しました');
+    setTimeout(() => setKeyMsg(''), 3000);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(params);
+    onSubmit({ ...params, gemini_api_key: '' }); // サーバー側でDB取得
   };
 
   return (
@@ -94,22 +139,65 @@ export default function SurveyForm({ onSubmit, loading }: Props) {
           </div>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Gemini APIキー <span className="text-gray-400 font-normal">（AI分析に必要）</span>
-          </label>
-          <input
-            type="password"
-            value={params.gemini_api_key}
-            onChange={e => setParams({...params, gemini_api_key: e.target.value})}
-            placeholder="AIzaSy..."
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+        {/* Gemini APIキー管理 */}
+        <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-gray-700">Gemini APIキー</span>
+              {hasApiKey === true && (
+                <span className="inline-flex items-center gap-1 text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
+                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
+                  </svg>
+                  登録済み
+                </span>
+              )}
+              {hasApiKey === false && (
+                <span className="text-xs text-red-500">未登録</span>
+              )}
+            </div>
+            <div className="flex gap-2">
+              {hasApiKey && (
+                <button type="button" onClick={deleteApiKey}
+                  className="text-xs text-red-500 hover:text-red-700 underline">
+                  削除
+                </button>
+              )}
+              <button type="button" onClick={() => setShowKeyInput(!showKeyInput)}
+                className="text-xs text-blue-600 hover:text-blue-800 underline">
+                {hasApiKey ? '更新' : '登録する'}
+              </button>
+            </div>
+          </div>
+
+          {showKeyInput && (
+            <div className="mt-2 flex gap-2">
+              <input
+                type="password"
+                value={newKey}
+                onChange={e => setNewKey(e.target.value)}
+                placeholder="AIzaSy..."
+                className="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <button type="button" onClick={saveApiKey} disabled={savingKey}
+                className="text-sm bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg disabled:opacity-50 transition">
+                {savingKey ? '保存中...' : '保存'}
+              </button>
+            </div>
+          )}
+
+          {keyMsg && (
+            <p className={`text-xs mt-1 ${keyMsg.includes('失敗') ? 'text-red-500' : 'text-green-600'}`}>
+              {keyMsg}
+            </p>
+          )}
+
           <p className="text-xs text-gray-400 mt-1">
-            <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener" className="text-blue-500 hover:underline">
+            キーはサーバー側で暗号化保存されます。
+            <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener"
+              className="text-blue-500 hover:underline ml-1">
               Google AI Studioで無料取得
             </a>
-            （サーバーには保存されません）
           </p>
         </div>
 

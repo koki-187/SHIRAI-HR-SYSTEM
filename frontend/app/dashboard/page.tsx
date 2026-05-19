@@ -87,8 +87,14 @@ export default function DashboardPage() {
       <header className="bg-white border-b shadow-sm">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
           <h1 className="text-2xl font-bold text-blue-700">HotelScope</h1>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <span className="text-sm text-gray-600">{session?.user?.name} さん</span>
+            {(session?.user as any)?.isAdmin && (
+              <a href="/admin"
+                className="text-sm bg-gray-800 hover:bg-gray-700 text-white px-3 py-1.5 rounded-lg transition">
+                管理者パネル
+              </a>
+            )}
             <button
               onClick={() => signOut({ callbackUrl: '/login' })}
               className="text-sm text-gray-500 hover:text-gray-700 border border-gray-300 rounded-lg px-3 py-1.5 transition"
