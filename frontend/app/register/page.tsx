@@ -45,7 +45,7 @@ export default function RegisterPage() {
               value={form.name}
               onChange={e => setForm({...form, name: e.target.value})}
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="白井"
+              placeholder="山田 太郎"
               required
             />
           </div>
@@ -57,7 +57,7 @@ export default function RegisterPage() {
               value={form.email}
               onChange={e => setForm({...form, email: e.target.value})}
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="shirai@example.com"
+              placeholder="yamada@example.com"
               required
             />
           </div>
