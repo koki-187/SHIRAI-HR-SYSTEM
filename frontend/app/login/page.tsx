@@ -1,19 +1,23 @@
 'use client';
-import { signIn, useSession } from 'next-auth/react';
+import { signIn, getSession, useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 
 export default function LoginPage() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // 既にログイン済みの場合のリダイレクト（isAdmin 対応）
   useEffect(() => {
-    if (session) router.push('/dashboard');
-  }, [session, router]);
+    if (status === 'authenticated' && session?.user) {
+      const dest = (session.user as any).isAdmin ? '/admin' : '/dashboard';
+      router.replace(dest);
+    }
+  }, [status, session, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,10 +31,22 @@ export default function LoginPage() {
     if (res?.error) {
       setError('メールアドレスまたはパスワードが正しくありません');
       setLoading(false);
-    } else {
-      router.push('/dashboard');
+      return;
     }
+
+    // ログイン成功 → セッションを最新化して isAdmin を確認してリダイレクト
+    const freshSession = await getSession();
+    const dest = (freshSession?.user as any)?.isAdmin ? '/admin' : '/dashboard';
+    router.replace(dest);
   };
+
+  if (status === 'loading') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-900">
+        <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-900 to-indigo-900 flex items-center justify-center p-4">
