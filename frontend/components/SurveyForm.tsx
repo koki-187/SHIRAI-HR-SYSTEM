@@ -27,8 +27,11 @@ export default function SurveyForm({ onSubmit, loading }: Props) {
   const [savingKey, setSavingKey] = useState(false);
 
   useEffect(() => {
-    fetch('/api/user/profile').then(r => r.json()).then(d => {
-      setHasApiKey(d.hasKey ?? false);
+    fetch('/api/user/profile').then(r => {
+      if (r.status === 401) { setHasApiKey(null); return null; } // admin: hide key UI
+      return r.json();
+    }).then(d => {
+      if (d) setHasApiKey(d.hasKey ?? false);
     }).catch(() => setHasApiKey(false));
   }, []);
 
@@ -139,8 +142,8 @@ export default function SurveyForm({ onSubmit, loading }: Props) {
           </div>
         </div>
 
-        {/* Gemini APIキー管理 */}
-        <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+        {/* Gemini APIキー管理（管理者はhasApiKey=nullのため非表示） */}
+        {hasApiKey !== null && <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium text-gray-700">Gemini APIキー</span>
@@ -199,7 +202,7 @@ export default function SurveyForm({ onSubmit, loading }: Props) {
               Google AI Studioで無料取得
             </a>
           </p>
-        </div>
+        </div>}
 
         <button
           type="submit"
