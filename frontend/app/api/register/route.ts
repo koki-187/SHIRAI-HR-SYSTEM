@@ -10,13 +10,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '全項目を入力してください' }, { status: 400 });
     }
 
-    const existing = getUserByEmail(email);
+    const existing = await getUserByEmail(email);
     if (existing) {
       return NextResponse.json({ error: 'このメールアドレスは既に使用されています' }, { status: 409 });
     }
 
     const hash = await bcrypt.hash(password, 12);
-    createUser(email, hash, name);
+    await createUser(email, hash, name);
 
     return NextResponse.json({ ok: true });
   } catch (e: any) {

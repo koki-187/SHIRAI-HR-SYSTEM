@@ -1,79 +1,96 @@
-import fs from 'fs';
-import path from 'path';
+import { neon } from '@neondatabase/serverless';
 
-const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), 'data');
-const USERS_FILE = path.join(DATA_DIR, 'users.json');
-const HISTORY_FILE = path.join(DATA_DIR, 'history.json');
-
-interface User {
-  id: number;
-  email: string;
-  password_hash: string;
-  name: string;
-  created_at: string;
+function getSql() {
+  const url = process.env.DATABASE_URL;
+  if (!url) throw new Error('DATABASE_URL is not configured');
+  return neon(url);
 }
 
-interface HistoryEntry {
-  id: string;
-  user_id: number;
-  location: string;
-  search_address: string;
-  params: object;
-  result: object;
-  created_at: string;
+export async function initSchema() {
+  const sql = getSql();
+  await sql`
+    CREATE TABLE IF NOT EXISTS users (
+      id        SERIAL PRIMARY KEY,
+      email     TEXT UNIQUE NOT NULL,
+      password_hash TEXT NOT NULL,
+      name      TEXT NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `;
+  await sql`
+    CREATE TABLE IF NOT EXISTS history (
+      id             TEXT PRIMARY KEY,
+      user_id        INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      location       TEXT,
+      search_address TEXT,
+      params         JSONB DEFAULT '{}',
+      result         JSONB DEFAULT '{}',
+      created_at     TIMESTAMPTZ DEFAULT NOW()
+    )
+  `;
 }
 
-function ensureDir() {
-  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+export async function getUserByEmail(email: string) {
+  const sql = getSql();
+  const rows = await sql`SELECT * FROM users WHERE email = ${email} LIMIT 1`;
+  return rows[0] ?? null;
 }
 
-function readUsers(): User[] {
-  ensureDir();
-  if (!fs.existsSync(USERS_FILE)) return [];
-  return JSON.parse(fs.readFileSync(USERS_FILE, 'utf-8'));
+export async function createUser(email: string, passwordHash: string, name: string) {
+  const sql = getSql();
+  const rows = await sql`
+    INSERT INTO users (email, password_hash, name)
+    VALUES (${email}, ${passwordHash}, ${name})
+    RETURNING id
+  `;
+  return { lastInsertRowid: rows[0].id };
 }
 
-function writeUsers(users: User[]) {
-  ensureDir();
-  fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
+export async function saveHistory(
+  userId: number,
+  id: string,
+  location: string,
+  searchAddress: string,
+  params: object,
+  result: object,
+) {
+  const sql = getSql();
+  await sql`
+    INSERT INTO history (id, user_id, location, search_address, params, result)
+    VALUES (
+      ${id}, ${userId}, ${location}, ${searchAddress},
+      ${JSON.stringify(params)}::jsonb, ${JSON.stringify(result)}::jsonb
+    )
+    ON CONFLICT (id) DO UPDATE SET
+      location       = EXCLUDED.location,
+      search_address = EXCLUDED.search_address,
+      params         = EXCLUDED.params,
+      result         = EXCLUDED.result,
+      created_at     = NOW()
+  `;
+  await sql`
+    DELETE FROM history
+    WHERE user_id = ${userId}
+      AND id NOT IN (
+        SELECT id FROM history
+        WHERE user_id = ${userId}
+        ORDER BY created_at DESC
+        LIMIT 50
+      )
+  `;
 }
 
-function readHistory(): HistoryEntry[] {
-  ensureDir();
-  if (!fs.existsSync(HISTORY_FILE)) return [];
-  return JSON.parse(fs.readFileSync(HISTORY_FILE, 'utf-8'));
+export async function getHistory(userId: number) {
+  const sql = getSql();
+  return await sql`
+    SELECT * FROM history
+    WHERE user_id = ${userId}
+    ORDER BY created_at DESC
+    LIMIT 50
+  `;
 }
 
-function writeHistory(history: HistoryEntry[]) {
-  ensureDir();
-  fs.writeFileSync(HISTORY_FILE, JSON.stringify(history, null, 2));
-}
-
-export function getUserByEmail(email: string) {
-  return readUsers().find(u => u.email === email) ?? null;
-}
-
-export function createUser(email: string, passwordHash: string, name: string) {
-  const users = readUsers();
-  const id = users.length > 0 ? Math.max(...users.map(u => u.id)) + 1 : 1;
-  users.push({ id, email, password_hash: passwordHash, name, created_at: new Date().toISOString() });
-  writeUsers(users);
-  return { lastInsertRowid: id };
-}
-
-export function saveHistory(userId: number, id: string, location: string, searchAddress: string, params: object, result: object) {
-  const history = readHistory();
-  history.unshift({ id, user_id: userId, location, search_address: searchAddress, params, result, created_at: new Date().toISOString() });
-  writeHistory(history.slice(0, 200));
-}
-
-export function getHistory(userId: number) {
-  return readHistory()
-    .filter(h => h.user_id === userId)
-    .slice(0, 50);
-}
-
-export function deleteHistory(id: string, userId: number) {
-  const history = readHistory().filter(h => !(h.id === id && h.user_id === userId));
-  writeHistory(history);
+export async function deleteHistory(id: string, userId: number) {
+  const sql = getSql();
+  await sql`DELETE FROM history WHERE id = ${id} AND user_id = ${userId}`;
 }

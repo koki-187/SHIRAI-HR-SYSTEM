@@ -7,7 +7,7 @@ export async function GET() {
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const userId = parseInt((session.user as any).id);
-  return NextResponse.json(getHistory(userId));
+  return NextResponse.json(await getHistory(userId));
 }
 
 export async function POST(req: NextRequest) {
@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const userId = parseInt((session.user as any).id);
   const { id, location, search_address, params, result } = await req.json();
-  saveHistory(userId, id, location, search_address, params, result);
+  await saveHistory(userId, id, location, search_address, params, result);
   return NextResponse.json({ ok: true });
 }
 
@@ -24,6 +24,6 @@ export async function DELETE(req: NextRequest) {
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const userId = parseInt((session.user as any).id);
   const { id } = await req.json();
-  deleteHistory(id, userId);
+  await deleteHistory(id, userId);
   return NextResponse.json({ ok: true });
 }
