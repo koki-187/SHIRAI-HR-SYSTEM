@@ -29,7 +29,13 @@ export const authOptions: NextAuthOptions = {
           } as any;
         }
 
-        const user = await getUserByEmail(credentials.email);
+        let user;
+        try {
+          user = await getUserByEmail(credentials.email);
+        } catch (e) {
+          console.error('[auth] DB lookup failed:', e);
+          return null;
+        }
         if (!user) return null;
         if (!user.active) return null; // 無効化されたアカウント
 
