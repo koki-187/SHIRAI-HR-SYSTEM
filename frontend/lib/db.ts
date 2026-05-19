@@ -1,69 +1,79 @@
-import Database from 'better-sqlite3';
+import fs from 'fs';
 import path from 'path';
 
-const DB_PATH = process.env.DATABASE_PATH || path.join(process.cwd(), 'hotelscope.db');
+const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), 'data');
+const USERS_FILE = path.join(DATA_DIR, 'users.json');
+const HISTORY_FILE = path.join(DATA_DIR, 'history.json');
 
-let db: Database.Database;
-
-function getDb(): Database.Database {
-  if (!db) {
-    db = new Database(DB_PATH);
-    db.pragma('journal_mode = WAL');
-    initSchema(db);
-  }
-  return db;
+interface User {
+  id: number;
+  email: string;
+  password_hash: string;
+  name: string;
+  created_at: string;
 }
 
-function initSchema(database: Database.Database) {
-  database.exec(`
-    CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      email TEXT UNIQUE NOT NULL,
-      password_hash TEXT NOT NULL,
-      name TEXT NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
+interface HistoryEntry {
+  id: string;
+  user_id: number;
+  location: string;
+  search_address: string;
+  params: object;
+  result: object;
+  created_at: string;
+}
 
-    CREATE TABLE IF NOT EXISTS survey_history (
-      id TEXT PRIMARY KEY,
-      user_id INTEGER NOT NULL,
-      location TEXT NOT NULL,
-      search_address TEXT,
-      params TEXT NOT NULL,
-      result TEXT NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (user_id) REFERENCES users(id)
-    );
-  `);
+function ensureDir() {
+  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+}
+
+function readUsers(): User[] {
+  ensureDir();
+  if (!fs.existsSync(USERS_FILE)) return [];
+  return JSON.parse(fs.readFileSync(USERS_FILE, 'utf-8'));
+}
+
+function writeUsers(users: User[]) {
+  ensureDir();
+  fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
+}
+
+function readHistory(): HistoryEntry[] {
+  ensureDir();
+  if (!fs.existsSync(HISTORY_FILE)) return [];
+  return JSON.parse(fs.readFileSync(HISTORY_FILE, 'utf-8'));
+}
+
+function writeHistory(history: HistoryEntry[]) {
+  ensureDir();
+  fs.writeFileSync(HISTORY_FILE, JSON.stringify(history, null, 2));
 }
 
 export function getUserByEmail(email: string) {
-  return getDb().prepare('SELECT * FROM users WHERE email = ?').get(email) as any;
+  return readUsers().find(u => u.email === email) ?? null;
 }
 
 export function createUser(email: string, passwordHash: string, name: string) {
-  return getDb().prepare(
-    'INSERT INTO users (email, password_hash, name) VALUES (?, ?, ?)'
-  ).run(email, passwordHash, name);
+  const users = readUsers();
+  const id = users.length > 0 ? Math.max(...users.map(u => u.id)) + 1 : 1;
+  users.push({ id, email, password_hash: passwordHash, name, created_at: new Date().toISOString() });
+  writeUsers(users);
+  return { lastInsertRowid: id };
 }
 
 export function saveHistory(userId: number, id: string, location: string, searchAddress: string, params: object, result: object) {
-  return getDb().prepare(
-    'INSERT INTO survey_history (id, user_id, location, search_address, params, result) VALUES (?, ?, ?, ?, ?, ?)'
-  ).run(id, userId, location, searchAddress, JSON.stringify(params), JSON.stringify(result));
+  const history = readHistory();
+  history.unshift({ id, user_id: userId, location, search_address: searchAddress, params, result, created_at: new Date().toISOString() });
+  writeHistory(history.slice(0, 200));
 }
 
 export function getHistory(userId: number) {
-  const rows = getDb().prepare(
-    'SELECT * FROM survey_history WHERE user_id = ? ORDER BY created_at DESC LIMIT 50'
-  ).all(userId) as any[];
-  return rows.map(r => ({
-    ...r,
-    params: JSON.parse(r.params),
-    result: JSON.parse(r.result),
-  }));
+  return readHistory()
+    .filter(h => h.user_id === userId)
+    .slice(0, 50);
 }
 
 export function deleteHistory(id: string, userId: number) {
-  return getDb().prepare('DELETE FROM survey_history WHERE id = ? AND user_id = ?').run(id, userId);
+  const history = readHistory().filter(h => !(h.id === id && h.user_id === userId));
+  writeHistory(history);
 }
