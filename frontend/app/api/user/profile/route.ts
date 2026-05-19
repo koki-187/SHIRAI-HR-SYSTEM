@@ -39,13 +39,3 @@ export async function PUT(req: NextRequest) {
   return NextResponse.json({ ok: true });
 }
 
-// 内部専用: APIキーを復号して返す（サーバーサイドのみ）
-export async function getDecryptedApiKey(userId: number): Promise<string | null> {
-  const enc = await getGeminiKey(userId);
-  if (!enc) return null;
-  try {
-    return decryptApiKey(enc);
-  } catch {
-    return null;
-  }
-}
