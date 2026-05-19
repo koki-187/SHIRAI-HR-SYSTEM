@@ -4,19 +4,14 @@ import { ScrapeResponse } from '@/types';
 
 interface Props {
   data: ScrapeResponse;
-  apiKey: string;
 }
 
-export default function AIAnalysis({ data, apiKey }: Props) {
+export default function AIAnalysis({ data }: Props) {
   const [analysis, setAnalysis] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const run = async () => {
-    if (!apiKey) {
-      setError('Gemini APIキーが設定されていません。調査フォームで入力してください。');
-      return;
-    }
     setLoading(true);
     setError('');
 
@@ -46,25 +41,15 @@ ${data.monthly_stats.map(s => `  ${s.month}: 平日¥${s.weekday_avg.toLocaleStr
     `.trim();
 
     try {
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { temperature: 0.7, maxOutputTokens: 1024 },
-          }),
-        }
-      );
-
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error?.message || 'API エラー');
-      }
+      const res = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt }),
+      });
 
       const result = await res.json();
-      setAnalysis(result.candidates?.[0]?.content?.parts?.[0]?.text || '分析結果が空です');
+      if (!res.ok) throw new Error(result.error || 'API エラー');
+      setAnalysis(result.text || '分析結果が空です');
     } catch (e: any) {
       setError(`分析失敗: ${e.message}`);
     } finally {

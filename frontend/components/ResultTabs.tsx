@@ -27,9 +27,7 @@ export default function ResultTabs({ data, params }: Props) {
   const [factors, setFactors] = useState<FactorsData | null>(null);
 
   useEffect(() => {
-    const backendUrl =
-      process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
-    fetch(`${backendUrl}/api/factors/?year=2024`)
+    fetch('/api/factors?year=2024')
       .then(r => r.json())
       .then(setFactors)
       .catch(() => {});
@@ -72,7 +70,7 @@ export default function ResultTabs({ data, params }: Props) {
         )}
       </div>
 
-      <AIAnalysis data={data} apiKey={params.gemini_api_key} />
+      <AIAnalysis data={data} />
     </div>
   );
 }
