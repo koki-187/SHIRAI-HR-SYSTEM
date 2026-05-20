@@ -1,3 +1,5 @@
+// Rakuten Travel SimpleHotelSearch API proxy
+// Docs: https://webservice.rakuten.co.jp/documentation/simple-hotel-search
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
