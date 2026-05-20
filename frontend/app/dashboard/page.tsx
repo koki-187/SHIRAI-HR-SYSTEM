@@ -5,6 +5,7 @@ import { useEffect, useState, useCallback } from 'react';
 import SurveyForm from '@/components/SurveyForm';
 import ResultTabs from '@/components/ResultTabs';
 import HistoryPanel from '@/components/HistoryPanel';
+import HistoryComparison from '@/components/HistoryComparison';
 import { scrapeHotels } from '@/lib/api';
 import { ScrapeResponse, SurveyParams, SurveyHistory } from '@/types';
 
@@ -127,7 +128,10 @@ export default function DashboardPage() {
           {/* 右カラム: 結果 */}
           <div className="lg:col-span-2">
             {result && currentParams ? (
-              <ResultTabs data={result} params={currentParams} />
+              <div className="space-y-6">
+                <ResultTabs data={result} params={currentParams} />
+                <HistoryComparison history={history} currentLocation={currentParams.location} />
+              </div>
             ) : (
               <div className="bg-white rounded-xl shadow-sm p-12 text-center text-gray-400">
                 <p className="text-4xl mb-4">🏨</p>

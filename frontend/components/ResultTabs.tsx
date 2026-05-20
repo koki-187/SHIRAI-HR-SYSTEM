@@ -36,7 +36,20 @@ export default function ResultTabs({ data, params }: Props) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <h2 className="text-xl font-bold text-gray-800">{data.search_address}</h2>
+        <div className="flex items-center gap-3 flex-wrap">
+          <h2 className="text-xl font-bold text-gray-800">{data.search_address}</h2>
+          {data.data_source && (
+            <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
+              data.data_source === 'rakuten' ? 'bg-red-100 text-red-700' :
+              data.data_source === 'seed'    ? 'bg-blue-100 text-blue-700' :
+                                              'bg-gray-100 text-gray-500'
+            }`}>
+              {data.data_source === 'rakuten' ? '🔴 楽天トラベル' :
+               data.data_source === 'seed'    ? '📊 実在データ' :
+                                               '🧪 モック'}
+            </span>
+          )}
+        </div>
         <ExportButtons data={data} />
       </div>
 

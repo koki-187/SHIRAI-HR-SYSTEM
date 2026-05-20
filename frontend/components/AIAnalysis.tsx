@@ -15,6 +15,12 @@ export default function AIAnalysis({ data }: Props) {
     setLoading(true);
     setError('');
 
+    if (!data.hotels || data.hotels.length === 0) {
+      setError('ホテルデータが存在しないため分析できません');
+      setLoading(false);
+      return;
+    }
+
     const avgPrice = data.hotels.reduce((s, h) => s + h.price_per_night, 0) / data.hotels.length;
     const minPrice = Math.min(...data.hotels.map(h => h.price_per_night));
     const maxPrice = Math.max(...data.hotels.map(h => h.price_per_night));
@@ -50,8 +56,8 @@ ${data.monthly_stats.map(s => `  ${s.month}: 平日¥${s.weekday_avg.toLocaleStr
       const result = await res.json();
       if (!res.ok) throw new Error(result.error || 'API エラー');
       setAnalysis(result.text || '分析結果が空です');
-    } catch (e: any) {
-      setError(`分析失敗: ${e.message}`);
+    } catch (e) {
+      setError(`分析失敗: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
       setLoading(false);
     }

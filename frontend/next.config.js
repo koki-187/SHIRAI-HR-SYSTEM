@@ -3,9 +3,7 @@ const nextConfig = {
   experimental: {
     instrumentationHook: true,
   },
-  env: {
-    BACKEND_URL: process.env.BACKEND_URL || 'http://localhost:8000',
-  },
+  // BACKEND_URL removed — all API routes are now Next.js serverless functions
 }
 
 module.exports = nextConfig

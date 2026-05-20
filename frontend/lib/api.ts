@@ -12,6 +12,7 @@ export async function scrapeHotels(params: SurveyParams): Promise<ScrapeResponse
       hotel_type: params.hotel_type,
       radius_km: params.radius_km,
       gemini_api_key: params.gemini_api_key,
+      data_source: params.data_source || 'auto',
     }),
   });
   const data = await res.json();

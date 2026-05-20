@@ -24,6 +24,7 @@ export interface ScrapeResponse {
   geocoded_lat: number;
   geocoded_lng: number;
   search_address: string;
+  data_source?: string; // 実際に使用したデータソース
 }
 
 export interface SurveyParams {
@@ -33,6 +34,7 @@ export interface SurveyParams {
   hotel_type: 'all' | 'business' | 'resort' | 'budget';
   radius_km: number;
   gemini_api_key: string;
+  data_source?: 'auto' | 'seed' | 'rakuten' | 'mock'; // データソース選択
 }
 
 export interface FactorsData {

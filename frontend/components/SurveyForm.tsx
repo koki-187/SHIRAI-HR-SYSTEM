@@ -18,6 +18,7 @@ export default function SurveyForm({ onSubmit, loading }: Props) {
     hotel_type: 'all',
     radius_km: 3,
     gemini_api_key: '',
+    data_source: 'auto',
   });
 
   const [hasApiKey, setHasApiKey] = useState<boolean | null>(null);
@@ -117,7 +118,7 @@ export default function SurveyForm({ onSubmit, loading }: Props) {
             <label className="block text-sm font-medium text-gray-700 mb-1">ホテルタイプ</label>
             <select
               value={params.hotel_type}
-              onChange={e => setParams({...params, hotel_type: e.target.value as any})}
+              onChange={e => setParams({...params, hotel_type: e.target.value as SurveyParams['hotel_type']})}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="all">すべて</option>
@@ -139,6 +140,36 @@ export default function SurveyForm({ onSubmit, loading }: Props) {
               onChange={e => setParams({...params, radius_km: parseFloat(e.target.value)})}
               className="w-full mt-2"
             />
+          </div>
+        </div>
+
+        {/* データソース選択 */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">データソース</label>
+          <div className="flex gap-3 flex-wrap">
+            {[
+              { value: 'auto', label: '🤖 自動', desc: '最適ソースを自動選択' },
+              { value: 'seed', label: '📊 実在データ', desc: '主要都市の実在ホテル' },
+              { value: 'rakuten', label: '🔴 楽天トラベル', desc: 'リアルタイム取得' },
+              { value: 'mock', label: '🧪 モック', desc: 'テスト用データ' },
+            ].map(opt => (
+              <label key={opt.value} className={`flex items-center gap-2 cursor-pointer px-3 py-2 rounded-lg border transition text-sm ${
+                params.data_source === opt.value
+                  ? 'border-blue-500 bg-blue-50 text-blue-700'
+                  : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+              }`}>
+                <input
+                  type="radio"
+                  name="data_source"
+                  value={opt.value}
+                  checked={params.data_source === opt.value}
+                  onChange={e => setParams({...params, data_source: e.target.value as SurveyParams['data_source']})}
+                  className="sr-only"
+                />
+                <span>{opt.label}</span>
+                <span className="text-xs opacity-60">{opt.desc}</span>
+              </label>
+            ))}
           </div>
         </div>
 

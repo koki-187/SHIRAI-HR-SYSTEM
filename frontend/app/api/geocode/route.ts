@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 
-const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000';
-
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -13,13 +11,21 @@ export async function GET(req: NextRequest) {
   if (!q) return NextResponse.json({ error: 'q is required' }, { status: 400 });
 
   try {
-    const res = await fetch(
-      `${BACKEND_URL}/api/geocode/?q=${encodeURIComponent(q)}`,
-      { signal: AbortSignal.timeout(10_000) },
-    );
-    if (!res.ok) return NextResponse.json({ error: 'Backend error' }, { status: res.status });
-    return NextResponse.json(await res.json());
-  } catch {
-    return NextResponse.json({ error: 'バックエンドサーバーに接続できません' }, { status: 503 });
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1`;
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'HotelScope/1.0 (navigator.koki@gmail.com)' },
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!res.ok) return NextResponse.json({ error: `Nominatim error: ${res.status}` }, { status: 502 });
+    const results = await res.json();
+    if (!results.length) return NextResponse.json({ error: `住所が見つかりませんでした: ${q}` }, { status: 404 });
+    const hit = results[0];
+    return NextResponse.json({
+      lat: parseFloat(hit.lat),
+      lng: parseFloat(hit.lon),
+      display_name: hit.display_name,
+    });
+  } catch (e: any) {
+    return NextResponse.json({ error: e.message || 'ジオコーディングエラー' }, { status: 502 });
   }
 }
