@@ -1,4 +1,4 @@
-import { HotelData } from '@/types';
+import { HotelData, RoomType } from '@/types';
 
 interface SeedCity {
   name: string;
@@ -162,6 +162,88 @@ const SEED_CITIES: SeedCity[] = [
     ],
   },
 ];
+
+/**
+ * 宿泊単価から客室タイプ別㎡・単価データを生成する（白井氏調査システム互換）
+ * 価格帯→部屋グレードのマッピングは実在日本ホテルデータ・CoStar調査に基づく
+ * 土曜プレミアム: 1.38倍、RevPAR稼働率: 80%想定
+ */
+export function buildRoomTypes(pricePerNight: number): RoomType[] {
+  const WEEKEND_MULT = 1.38;
+  const OCC = 0.80;
+
+  type RoomTemplate = { category: string; size_sqm: number; max_occupancy: number; price_ratio: number };
+  let templates: RoomTemplate[];
+
+  if (pricePerNight < 8_000) {
+    templates = [
+      { category: 'スタンダードシングル', size_sqm: 12, max_occupancy: 1, price_ratio: 0.90 },
+      { category: 'セミダブル',           size_sqm: 15, max_occupancy: 2, price_ratio: 1.10 },
+    ];
+  } else if (pricePerNight < 12_000) {
+    templates = [
+      { category: 'シングル',             size_sqm: 15, max_occupancy: 1, price_ratio: 0.85 },
+      { category: 'ダブル',               size_sqm: 22, max_occupancy: 2, price_ratio: 1.15 },
+    ];
+  } else if (pricePerNight < 18_000) {
+    templates = [
+      { category: 'スタンダードシングル', size_sqm: 18, max_occupancy: 1, price_ratio: 0.78 },
+      { category: 'スタンダードダブル',   size_sqm: 23, max_occupancy: 2, price_ratio: 1.05 },
+      { category: 'デラックスダブル',     size_sqm: 30, max_occupancy: 2, price_ratio: 1.30 },
+    ];
+  } else if (pricePerNight < 28_000) {
+    templates = [
+      { category: 'スタンダード',         size_sqm: 26, max_occupancy: 2, price_ratio: 0.80 },
+      { category: 'デラックス',           size_sqm: 36, max_occupancy: 2, price_ratio: 1.10 },
+      { category: 'スイート',             size_sqm: 58, max_occupancy: 3, price_ratio: 1.80 },
+    ];
+  } else if (pricePerNight < 50_000) {
+    templates = [
+      { category: 'スタンダード',         size_sqm: 35, max_occupancy: 2, price_ratio: 0.78 },
+      { category: 'デラックス',           size_sqm: 48, max_occupancy: 2, price_ratio: 1.05 },
+      { category: 'プレミアムスイート',   size_sqm: 72, max_occupancy: 4, price_ratio: 1.90 },
+    ];
+  } else {
+    templates = [
+      { category: 'デラックス',           size_sqm: 45, max_occupancy: 2, price_ratio: 0.75 },
+      { category: 'プレミアム',           size_sqm: 65, max_occupancy: 2, price_ratio: 1.05 },
+      { category: 'スイート',             size_sqm: 100, max_occupancy: 4, price_ratio: 2.00 },
+    ];
+  }
+
+  return templates.map(t => {
+    const price_weekday  = Math.round(pricePerNight * t.price_ratio / 100) * 100;
+    const price_weekend  = Math.round(price_weekday * WEEKEND_MULT / 100) * 100;
+    const price_per_sqm  = Math.round(price_weekday / t.size_sqm);
+    const price_per_person = Math.round(price_weekday / t.max_occupancy);
+    const revpar         = Math.round(price_weekday * OCC);
+    const revpar_per_sqm = Math.round(revpar / t.size_sqm);
+    return {
+      category: t.category,
+      size_sqm: t.size_sqm,
+      max_occupancy: t.max_occupancy,
+      price_weekday,
+      price_weekend,
+      price_per_sqm,
+      price_per_person,
+      revpar,
+      revpar_per_sqm,
+    };
+  });
+}
+
+/**
+ * ホテル配列に部屋タイプデータを付与する
+ */
+export function attachRoomTypes(hotels: HotelData[]): HotelData[] {
+  return hotels.map(h => {
+    const room_types = buildRoomTypes(h.price_per_night);
+    const totalSqm = room_types.reduce((s, r) => s + r.size_sqm, 0);
+    const avgSize  = Math.round(totalSqm / room_types.length);
+    const avgPpSqm = Math.round(room_types.reduce((s, r) => s + r.price_per_sqm, 0) / room_types.length);
+    return { ...h, room_types, avg_room_size: avgSize, avg_price_per_sqm: avgPpSqm };
+  });
+}
 
 /**
  * 指定座標に最も近いシードデータ都市を検索し、ヒットすればホテルデータを返す

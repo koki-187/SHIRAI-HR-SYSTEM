@@ -1,3 +1,16 @@
+/** 部屋タイプ別㎡・単価データ（白井氏調査システム互換） */
+export interface RoomType {
+  category: string;         // 例: "スタンダードシングル"
+  size_sqm: number;         // 客室面積（㎡）
+  max_occupancy: number;    // 最大定員
+  price_weekday: number;    // 平日料金
+  price_weekend: number;    // 休日料金（土曜）
+  price_per_sqm: number;    // ㎡単価（平日料金÷面積）
+  price_per_person: number; // 1人あたり単価（平日÷定員）
+  revpar: number;           // RevPAR（平日料金×稼働率80%）
+  revpar_per_sqm: number;   // RevPAR/㎡
+}
+
 export interface HotelData {
   name: string;
   price_per_night: number;
@@ -7,6 +20,12 @@ export interface HotelData {
   lat?: number;
   lng?: number;
   source: string;
+  /** 部屋タイプ別データ（自動生成） */
+  room_types?: RoomType[];
+  /** 平均客室面積（㎡） */
+  avg_room_size?: number;
+  /** 平均㎡単価（円/㎡） */
+  avg_price_per_sqm?: number;
 }
 
 export interface MonthlyStats {

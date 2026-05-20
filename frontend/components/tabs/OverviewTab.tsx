@@ -20,6 +20,15 @@ export default function OverviewTab({ data }: { data: ScrapeResponse }) {
     ? ratedHotels.reduce((s, h) => s + (h.rating || 0), 0) / ratedHotels.length
     : 0;
 
+  // ㎡関連指標
+  const hotelsWithRooms = hotels.filter(h => h.avg_room_size && h.avg_price_per_sqm);
+  const avgRoomSqm = hotelsWithRooms.length > 0
+    ? Math.round(hotelsWithRooms.reduce((s, h) => s + (h.avg_room_size ?? 0), 0) / hotelsWithRooms.length)
+    : null;
+  const avgPricePerSqm = hotelsWithRooms.length > 0
+    ? Math.round(hotelsWithRooms.reduce((s, h) => s + (h.avg_price_per_sqm ?? 0), 0) / hotelsWithRooms.length)
+    : null;
+
   const statLen = monthly_stats.length || 1;
   const weekdayAvg = monthly_stats.reduce((s, m) => s + m.weekday_avg, 0) / statLen;
   const weekendAvg = monthly_stats.reduce((s, m) => s + m.weekend_avg, 0) / statLen;
@@ -61,6 +70,22 @@ export default function OverviewTab({ data }: { data: ScrapeResponse }) {
           )}
         </div>
       </div>
+
+      {/* ㎡単価カード */}
+      {avgRoomSqm !== null && avgPricePerSqm !== null && (
+        <div className="grid grid-cols-2 gap-4">
+          <div className="bg-teal-50 rounded-xl p-4 border border-teal-100">
+            <p className="text-xs text-teal-600 opacity-80 mb-1">エリア平均客室面積</p>
+            <p className="text-xl font-bold text-teal-700">{avgRoomSqm}㎡</p>
+            <p className="text-xs text-teal-500 mt-0.5">全部屋タイプ加重平均</p>
+          </div>
+          <div className="bg-cyan-50 rounded-xl p-4 border border-cyan-100">
+            <p className="text-xs text-cyan-600 opacity-80 mb-1">平均㎡単価</p>
+            <p className="text-xl font-bold text-cyan-700">¥{avgPricePerSqm.toLocaleString()}<span className="text-sm font-normal">/㎡</span></p>
+            <p className="text-xs text-cyan-500 mt-0.5">平日料金÷客室面積</p>
+          </div>
+        </div>
+      )}
 
       <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4">
         <div className="flex items-center justify-between">

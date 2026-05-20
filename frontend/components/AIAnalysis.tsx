@@ -25,6 +25,20 @@ export default function AIAnalysis({ data }: Props) {
     const minPrice = Math.min(...data.hotels.map(h => h.price_per_night));
     const maxPrice = Math.max(...data.hotels.map(h => h.price_per_night));
 
+    // ㎡データサマリー
+    const hotelsWithRooms = data.hotels.filter(h => h.avg_room_size && h.avg_price_per_sqm);
+    const avgSqm = hotelsWithRooms.length > 0
+      ? Math.round(hotelsWithRooms.reduce((s, h) => s + (h.avg_room_size ?? 0), 0) / hotelsWithRooms.length)
+      : null;
+    const avgPpSqm = hotelsWithRooms.length > 0
+      ? Math.round(hotelsWithRooms.reduce((s, h) => s + (h.avg_price_per_sqm ?? 0), 0) / hotelsWithRooms.length)
+      : null;
+    const revparPerSqm = avgPpSqm ? Math.round(avgPpSqm * 0.8) : null;
+
+    const roomSummary = avgSqm && avgPpSqm
+      ? `【平均客室面積】${avgSqm}㎡\n【平均㎡単価】¥${avgPpSqm.toLocaleString()}/㎡\n【RevPAR/㎡推定】¥${revparPerSqm?.toLocaleString()}/㎡（稼働率80%）`
+      : '';
+
     const prompt = `
 あなたはホテル投資のプロアナリストです。以下のエリアのホテル市場データを分析し、土地仕入れ・ホテル開発の投資判断レポートを日本語で作成してください。
 
@@ -32,6 +46,7 @@ export default function AIAnalysis({ data }: Props) {
 【調査ホテル数】${data.hotels.length}件
 【平均宿泊単価（ADR）】¥${Math.round(avgPrice).toLocaleString()}
 【最低価格】¥${minPrice.toLocaleString()} / 【最高価格】¥${maxPrice.toLocaleString()}
+${roomSummary}
 【月別推移サマリー】
 ${data.monthly_stats.map(s => `  ${s.month}: 平日¥${s.weekday_avg.toLocaleString()} 休日¥${s.weekend_avg.toLocaleString()}${s.peak_avg ? ` 繁忙期¥${s.peak_avg.toLocaleString()}` : ''}`).join('\n')}
 
@@ -39,11 +54,12 @@ ${data.monthly_stats.map(s => `  ${s.month}: 平日¥${s.weekday_avg.toLocaleStr
 1. 市場規模と価格帯の評価
 2. 季節変動・需給バランス
 3. 競合環境の評価
-4. RevPAR推定（稼働率80%想定）
-5. 投資判断（推奨度、リスク、機会）
-6. 参入戦略の提案
+4. RevPAR推定・RevPAR/㎡効率（稼働率80%想定）
+5. 客室面積・㎡単価から見た競争力評価
+6. 投資判断（推奨度、リスク、機会）
+7. 参入戦略の提案（客室グレード・面積設定含む）
 
-具体的な数字を交えて、500〜800字程度でまとめてください。
+具体的な数字を交えて、600〜900字程度でまとめてください。
     `.trim();
 
     try {

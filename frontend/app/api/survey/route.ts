@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { getGeminiKey } from '@/lib/db';
 import { decryptApiKey } from '@/lib/crypto';
 import { HotelData, MonthlyStats } from '@/types';
-import { findSeedHotels, generateSeedMonthlyStats } from '@/lib/seed-hotels';
+import { findSeedHotels, generateSeedMonthlyStats, attachRoomTypes } from '@/lib/seed-hotels';
 
 // ---- Geocoding via Nominatim ----
 async function geocode(location: string): Promise<{ lat: number; lng: number; display_name: string }> {
@@ -209,8 +209,11 @@ export async function POST(req: NextRequest) {
       actualSource = 'mock';
     }
 
+    // 部屋タイプデータを全ホテルに付与（㎡単価・RevPAR/㎡計算）
+    const hotelsWithRooms = attachRoomTypes(hotels);
+
     return NextResponse.json({
-      hotels,
+      hotels: hotelsWithRooms,
       monthly_stats,
       geocoded_lat: geo.lat,
       geocoded_lng: geo.lng,

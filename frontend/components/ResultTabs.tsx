@@ -8,6 +8,7 @@ import FactorsTab from './tabs/FactorsTab';
 import MapTab from './tabs/MapTab';
 import AIAnalysis from './AIAnalysis';
 import ExportButtons from './ExportButtons';
+import RoomTab from './tabs/RoomTab';
 
 const TABS = [
   { id: 'overview', label: '概要' },
@@ -15,6 +16,7 @@ const TABS = [
   { id: 'trend', label: '価格推移' },
   { id: 'factors', label: '要因分析' },
   { id: 'map', label: '地図' },
+  { id: 'room', label: '部屋分析' },
 ];
 
 interface Props {
@@ -91,6 +93,7 @@ export default function ResultTabs({ data, params }: Props) {
             centerLng={data.geocoded_lng}
           />
         )}
+        {activeTab === 'room' && <RoomTab hotels={data.hotels} />}
       </div>
 
       <AIAnalysis data={data} />

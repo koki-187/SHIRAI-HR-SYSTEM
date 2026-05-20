@@ -68,6 +68,34 @@ export default function ExportButtons({ data }: { data: ScrapeResponse }) {
     ws3['!cols'] = [{ wch: 20 }, { wch: 30 }];
     XLSX.utils.book_append_sheet(wb, ws3, 'サマリー');
 
+    // シート4: 部屋分析（㎡単価・RevPAR/㎡）
+    const roomRows: Record<string, string | number>[] = [];
+    data.hotels.forEach(h => {
+      if (!h.room_types || h.room_types.length === 0) return;
+      h.room_types.forEach(r => {
+        roomRows.push({
+          'ホテル名': h.name,
+          '部屋タイプ': r.category,
+          '客室面積 (㎡)': r.size_sqm,
+          '最大定員': r.max_occupancy,
+          '平日料金 (円)': r.price_weekday,
+          '休日料金 (円)': r.price_weekend,
+          '㎡単価 (円/㎡)': r.price_per_sqm,
+          '1人あたり単価 (円)': r.price_per_person,
+          'RevPAR (円)': r.revpar,
+          'RevPAR/㎡ (円/㎡)': r.revpar_per_sqm,
+        });
+      });
+    });
+    if (roomRows.length > 0) {
+      const ws4 = XLSX.utils.json_to_sheet(roomRows);
+      ws4['!cols'] = [
+        { wch: 28 }, { wch: 20 }, { wch: 14 }, { wch: 10 },
+        { wch: 14 }, { wch: 14 }, { wch: 16 }, { wch: 18 }, { wch: 14 }, { wch: 16 },
+      ];
+      XLSX.utils.book_append_sheet(wb, ws4, '部屋分析');
+    }
+
     XLSX.writeFile(
       wb,
       `HotelScope_${data.search_address.substring(0, 20)}_${new Date().toISOString().split('T')[0]}.xlsx`

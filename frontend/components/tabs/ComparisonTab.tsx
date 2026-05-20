@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { HotelData } from '@/types';
 
-type SortKey = 'price_per_night' | 'rating' | 'name';
+type SortKey = 'price_per_night' | 'rating' | 'name' | 'avg_room_size' | 'avg_price_per_sqm';
 
 const safeUrl = (url: string) => {
   try {
@@ -29,9 +29,17 @@ export default function ComparisonTab({ hotels }: { hotels: HotelData[] }) {
     );
   }
 
+  const getSortVal = (h: HotelData): string | number => {
+    if (sortKey === 'name') return h.name;
+    if (sortKey === 'price_per_night') return h.price_per_night;
+    if (sortKey === 'rating') return h.rating ?? 0;
+    if (sortKey === 'avg_room_size') return h.avg_room_size ?? 0;
+    if (sortKey === 'avg_price_per_sqm') return h.avg_price_per_sqm ?? 0;
+    return 0;
+  };
   const sorted = [...hotels].sort((a, b) => {
-    const av = a[sortKey] ?? (sortKey === 'rating' ? 0 : '');
-    const bv = b[sortKey] ?? (sortKey === 'rating' ? 0 : '');
+    const av = getSortVal(a);
+    const bv = getSortVal(b);
     if (av < bv) return sortAsc ? -1 : 1;
     if (av > bv) return sortAsc ? 1 : -1;
     return 0;
@@ -63,6 +71,8 @@ export default function ComparisonTab({ hotels }: { hotels: HotelData[] }) {
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">#</th>
               <Th k="name" label="ホテル名" />
               <Th k="price_per_night" label="料金/泊" />
+              <Th k="avg_room_size" label="平均面積" />
+              <Th k="avg_price_per_sqm" label="㎡単価" />
               <Th k="rating" label="評価" />
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ソース</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">リンク</th>
@@ -77,6 +87,16 @@ export default function ComparisonTab({ hotels }: { hotels: HotelData[] }) {
                   <span className="font-semibold text-green-700">
                     ¥{hotel.price_per_night.toLocaleString()}
                   </span>
+                </td>
+                <td className="px-4 py-3 text-gray-600">
+                  {hotel.avg_room_size ? `${hotel.avg_room_size}㎡` : '-'}
+                </td>
+                <td className="px-4 py-3">
+                  {hotel.avg_price_per_sqm ? (
+                    <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-xs font-medium">
+                      ¥{hotel.avg_price_per_sqm.toLocaleString()}/㎡
+                    </span>
+                  ) : '-'}
                 </td>
                 <td className="px-4 py-3">
                   {hotel.rating ? (

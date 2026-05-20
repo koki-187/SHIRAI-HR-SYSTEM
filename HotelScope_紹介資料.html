@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HotelScope — ホテル市場調査システム 紹介資料</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;600;700;900&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    width: 297mm;
+    height: 210mm;
+    overflow: hidden;
+    background: #eef2f7;
+    font-family: 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif;
+  }
+
+  .page {
+    width: 297mm;
+    height: 210mm;
+    display: grid;
+    grid-template-columns: 68mm 1fr;
+    overflow: hidden;
+  }
+
+  /* ===================== LEFT ===================== */
+  .left {
+    background: linear-gradient(170deg, #0d1b2e 0%, #142847 55%, #1b3561 100%);
+    padding: 9mm 7.5mm 8mm;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    position: relative;
+    overflow: hidden;
+  }
+  .glow1 {
+    position: absolute; top: -15mm; right: -12mm;
+    width: 50mm; height: 50mm;
+    background: radial-gradient(circle, rgba(56,132,255,.3) 0%, transparent 70%);
+    border-radius: 50%; pointer-events: none;
+  }
+  .glow2 {
+    position: absolute; bottom: 5mm; left: -10mm;
+    width: 42mm; height: 42mm;
+    background: radial-gradient(circle, rgba(139,92,246,.2) 0%, transparent 70%);
+    border-radius: 50%; pointer-events: none;
+  }
+
+  /* Brand */
+  .brand { position: relative; z-index: 1; }
+  .brand-badge {
+    display: inline-flex; align-items: center; gap: 2mm;
+    background: rgba(56,132,255,.18); border: 1px solid rgba(56,132,255,.4);
+    border-radius: 5px; padding: 1.2mm 3mm; margin-bottom: 4.5mm;
+  }
+  .brand-badge span { font-size: 2.6mm; font-weight: 700; color: #60a5fa; letter-spacing: .06em; text-transform: uppercase; }
+  h1 { font-size: 9.5mm; font-weight: 900; color: #fff; line-height: 1.05; letter-spacing: -.02em; margin-bottom: 2mm; }
+  h1 em { color: #3b82f6; font-style: normal; }
+  .brand-desc { font-size: 2.9mm; color: #94a3b8; line-height: 1.65; margin-bottom: 5mm; }
+  .brand-tag {
+    display: inline-block;
+    background: linear-gradient(90deg, #3b82f6, #6366f1);
+    color: #fff; font-size: 2.4mm; font-weight: 700;
+    padding: 1.2mm 3.5mm; border-radius: 20px; letter-spacing: .04em;
+  }
+
+  /* Flow */
+  .flow { position: relative; z-index: 1; }
+  .sec-label { font-size: 2.2mm; color: #475569; font-weight: 500; text-transform: uppercase; letter-spacing: .1em; margin-bottom: 3.5mm; }
+  .flow-steps { display: flex; flex-direction: column; gap: 1.8mm; }
+  .flow-step { display: flex; align-items: flex-start; gap: 2.5mm; }
+  .fd {
+    width: 5.5mm; height: 5.5mm; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 3mm; flex-shrink: 0;
+  }
+  .fd.b { background: rgba(59,130,246,.18); border: 1.5px solid #3b82f6; }
+  .fd.g { background: rgba(34,197,94,.18);  border: 1.5px solid #22c55e; }
+  .fd.a { background: rgba(251,191,36,.18); border: 1.5px solid #fbbf24; }
+  .fd.p { background: rgba(168,85,247,.18); border: 1.5px solid #a855f7; }
+  .ft { font-size: 2.6mm; color: #cbd5e1; line-height: 1.45; }
+  .ft strong { color: #f1f5f9; font-weight: 600; display: block; }
+  .fa { width: 1px; height: 2.5mm; background: linear-gradient(to bottom, #334155, transparent); margin-left: 2.5mm; }
+
+  /* Left footer */
+  .lfoot { position: relative; z-index: 1; }
+  .pills { display: flex; flex-wrap: wrap; gap: 1.5mm; margin-bottom: 2.5mm; }
+  .pill {
+    background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12);
+    color: #94a3b8; font-size: 2.1mm; padding: .7mm 2mm; border-radius: 4px;
+  }
+  .url-line { font-size: 2.4mm; color: #3b82f6; font-weight: 500; }
+
+  /* ===================== RIGHT ===================== */
+  .right {
+    background: #f0f4f9;
+    padding: 7mm 8mm;
+    display: grid;
+    grid-template-rows: auto auto 1fr auto;
+    gap: 4mm;
+    overflow: hidden;
+  }
+
+  /* Header */
+  .rh { display: flex; align-items: flex-start; justify-content: space-between; gap: 4mm; }
+  .rh-title { font-size: 4mm; font-weight: 700; color: #0f172a; line-height: 1.3; }
+  .rh-title em { color: #3b82f6; font-style: normal; }
+  .rh-sub { font-size: 2.6mm; color: #64748b; margin-top: 1mm; line-height: 1.5; }
+  .client-box {
+    background: linear-gradient(135deg, #0d1b2e, #1b3561);
+    color: #fff; border-radius: 7px; padding: 2.5mm 4mm; text-align: right; flex-shrink: 0;
+  }
+  .cb-label { font-size: 1.9mm; color: #64748b; margin-bottom: .5mm; }
+  .cb-name  { font-size: 3mm; font-weight: 700; }
+  .cb-role  { font-size: 1.9mm; color: #60a5fa; }
+
+  /* Cards grid */
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(2, 1fr);
+    gap: 3.5mm;
+    overflow: hidden;
+  }
+
+  .card {
+    background: #fff;
+    border-radius: 8px; border: 1px solid #e2e8f0;
+    padding: 3.5mm;
+    display: flex; flex-direction: column; gap: 1.8mm;
+    box-shadow: 0 1px 3px rgba(0,0,0,.06);
+    overflow: hidden;
+    position: relative;
+  }
+  .card-bar { height: .9mm; border-radius: 4px 4px 0 0; position: absolute; top: 0; left: 0; right: 0; }
+  .bar-blue   { background: linear-gradient(90deg,#3b82f6,#60a5fa); }
+  .bar-green  { background: linear-gradient(90deg,#22c55e,#4ade80); }
+  .bar-amber  { background: linear-gradient(90deg,#f59e0b,#fbbf24); }
+  .bar-purple { background: linear-gradient(90deg,#8b5cf6,#a78bfa); }
+  .bar-rose   { background: linear-gradient(90deg,#f43f5e,#fb7185); }
+  .bar-cyan   { background: linear-gradient(90deg,#06b6d4,#22d3ee); }
+
+  .card-head { display: flex; align-items: center; gap: 2mm; margin-top: 1mm; }
+  .ci { font-size: 4.5mm; line-height: 1; }
+  .ct { font-size: 2.9mm; font-weight: 700; color: #0f172a; }
+  .cd { font-size: 2.2mm; color: #64748b; line-height: 1.5; }
+  .ci-list { display: flex; flex-direction: column; gap: .9mm; }
+  .ci-row { display: flex; align-items: flex-start; gap: 1.5mm; font-size: 2.1mm; color: #374151; line-height: 1.4; }
+  .ci-row::before { content: '▸'; color: #3b82f6; font-size: 1.9mm; flex-shrink: 0; margin-top: .2mm; }
+  .tags { display: flex; flex-wrap: wrap; gap: 1mm; margin-top: auto; }
+  .tag { font-size: 1.9mm; font-weight: 600; padding: .5mm 2mm; border-radius: 4px; }
+  .tbl { background:#dbeafe; color:#1d4ed8; }
+  .tgn { background:#dcfce7; color:#15803d; }
+  .tam { background:#fef3c7; color:#b45309; }
+  .tpu { background:#ede9fe; color:#7c3aed; }
+  .tro { background:#ffe4e6; color:#be123c; }
+  .tcy { background:#cffafe; color:#0e7490; }
+  .tgr { background:#f1f5f9; color:#475569; }
+  .tag-soon { background:#fef9c3; color:#854d0e; font-size:1.8mm; padding:.4mm 1.8mm; border-radius:10px; border:1px solid #fde047; }
+
+  /* Sites row */
+  .sites-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr) 3fr;
+    gap: 3mm;
+    align-items: center;
+  }
+  .site-box {
+    background: #fff; border-radius: 7px; border: 1px solid #e2e8f0;
+    padding: 2mm 2.5mm; text-align: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,.05);
+  }
+  .site-icon { font-size: 4.5mm; display: block; line-height: 1.3; }
+  .site-name { font-size: 2mm; font-weight: 700; color: #1e293b; display: block; margin-top: .5mm; }
+  .site-status { font-size: 1.7mm; font-weight: 600; padding: .4mm 1.5mm; border-radius: 3px; display: inline-block; margin-top: .5mm; }
+  .s-live { background:#dcfce7; color:#166534; }
+  .s-soon { background:#fef3c7; color:#92400e; }
+  .site-arrow { font-size: 5mm; color: #cbd5e1; text-align: center; }
+
+  /* Stats bar */
+  .stats {
+    background: linear-gradient(90deg, #0d1b2e 0%, #162d55 100%);
+    border-radius: 8px; padding: 3mm 5mm;
+    display: grid; grid-template-columns: repeat(5,1fr); gap: 2mm; align-items: center;
+  }
+  .si { text-align: center; }
+  .sn { font-size: 5mm; font-weight: 900; color: #60a5fa; line-height: 1; }
+  .sn sub { font-size: 2.6mm; font-weight: 400; color: #94a3b8; }
+  .sl { font-size: 1.9mm; color: #64748b; margin-top: .8mm; line-height: 1.3; }
+  .sdiv { width: 1px; height: 7mm; background: rgba(255,255,255,.1); margin: 0 auto; }
+
+  /* Roadmap strip */
+  .roadmap {
+    background: linear-gradient(90deg, #fef9c3, #fff7ed);
+    border: 1px solid #fde047; border-radius: 7px;
+    padding: 2.2mm 4mm;
+    display: flex; align-items: center; gap: 3mm;
+  }
+  .rm-label { font-size: 2.1mm; font-weight: 700; color: #854d0e; white-space: nowrap; flex-shrink: 0; }
+  .rm-items { display: flex; gap: 2mm; flex-wrap: wrap; }
+  .rm-item {
+    background: #fff; border: 1px solid #fde047;
+    border-radius: 5px; padding: 1mm 2.5mm;
+    font-size: 2mm; color: #713f12; font-weight: 500;
+    display: flex; align-items: center; gap: 1mm;
+  }
+  .rm-num { background:#fde047; color:#78350f; font-size:1.8mm; font-weight:700; border-radius:3px; padding:.2mm 1.2mm; }
+
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- LEFT -->
+  <div class="left">
+    <div class="glow1"></div>
+    <div class="glow2"></div>
+
+    <div class="brand">
+      <div class="brand-badge">
+        <span>🏨</span>
+        <span>HotelScope</span>
+      </div>
+      <h1>Hotel<em>Scope</em></h1>
+      <p class="brand-desc">
+        周辺ホテルの料金・評価・<br>
+        需給データを自動収集し、<br>
+        <strong style="color:#f1f5f9">土地仕入れ判断</strong>を支援する<br>
+        クラウド型市場調査システム
+      </p>
+      <span class="brand-tag">✦ 不動産仕入れ担当者専用ツール</span>
+    </div>
+
+    <div class="flow">
+      <div class="sec-label">データ取得フロー</div>
+      <div class="flow-steps">
+        <div class="flow-step">
+          <div class="fd b">📍</div>
+          <div class="ft"><strong>エリア指定（住所・駅名）</strong>半径 0.5〜10km・チェックイン日 指定</div>
+        </div>
+        <div class="fa"></div>
+        <div class="flow-step">
+          <div class="fd g">🌏</div>
+          <div class="ft"><strong>ジオコーディング</strong>OpenStreetMap で緯度・経度に自動変換</div>
+        </div>
+        <div class="fa"></div>
+        <div class="flow-step">
+          <div class="fd a">🔍</div>
+          <div class="ft"><strong>OTA 自動収集</strong>Booking.com 等から料金・評価を取得</div>
+        </div>
+        <div class="fa"></div>
+        <div class="flow-step">
+          <div class="fd p">🤖</div>
+          <div class="ft"><strong>Gemini AI 投資分析</strong>ADR / RevPAR / 参入戦略を自動レポート化</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lfoot">
+      <div class="pills">
+        <span class="pill">Next.js 14</span>
+        <span class="pill">FastAPI</span>
+        <span class="pill">Gemini AI</span>
+        <span class="pill">Neon DB</span>
+        <span class="pill">Leaflet</span>
+        <span class="pill">Vercel</span>
+      </div>
+      <div class="url-line">🔗 hotelscope-frontend.vercel.app</div>
+    </div>
+  </div>
+
+  <!-- RIGHT -->
+  <div class="right">
+
+    <!-- Header -->
+    <div class="rh">
+      <div>
+        <div class="rh-title">どのサイトを調査し、<em>何のデータ</em>を収集しているのか？</div>
+        <div class="rh-sub">複数の OTA（ホテル予約サイト）から料金・評価を自動収集 → 5種の分析ビューで多角的に可視化</div>
+      </div>
+      <div class="client-box">
+        <div class="cb-label">作成者</div>
+        <div class="cb-name">開発チーム</div>
+        <div class="cb-role">白井 様 向け資料 — 2026.05</div>
+      </div>
+    </div>
+
+    <!-- Sites row -->
+    <div class="sites-row">
+      <div class="site-box">
+        <span class="site-icon">🌐</span>
+        <span class="site-name">Booking.com</span>
+        <span class="site-status s-live">稼働中</span>
+      </div>
+      <div class="site-box">
+        <span class="site-icon">🏯</span>
+        <span class="site-name">じゃらん</span>
+        <span class="site-status s-soon">開発予定</span>
+      </div>
+      <div class="site-box">
+        <span class="site-icon">🍵</span>
+        <span class="site-name">一休.com</span>
+        <span class="site-status s-soon">開発予定</span>
+      </div>
+      <div class="site-box">
+        <span class="site-icon">🎴</span>
+        <span class="site-name">楽天トラベル</span>
+        <span class="site-status s-soon">開発予定</span>
+      </div>
+
+      <!-- Collected data summary box -->
+      <div style="background:#fff;border-radius:7px;border:1px solid #e2e8f0;padding:2.5mm 3mm;box-shadow:0 1px 3px rgba(0,0,0,.06);">
+        <div style="font-size:2.1mm;font-weight:700;color:#0f172a;margin-bottom:1.5mm;">📦 収集するデータ項目（1ホテルあたり）</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8mm 3mm;">
+          <div style="font-size:2mm;color:#374151;">▸ ホテル名（施設名称）</div>
+          <div style="font-size:2mm;color:#374151;">▸ 1泊料金（円建て）</div>
+          <div style="font-size:2mm;color:#374151;">▸ 評価スコア（10点満点）</div>
+          <div style="font-size:2mm;color:#374151;">▸ レビュー件数</div>
+          <div style="font-size:2mm;color:#374151;">▸ 位置情報（緯度・経度）</div>
+          <div style="font-size:2mm;color:#374151;">▸ 予約ページ URL</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Feature cards -->
+    <div class="cards">
+
+      <div class="card">
+        <div class="card-bar bar-blue"></div>
+        <div class="card-head"><span class="ci">📊</span><span class="ct">概要タブ</span></div>
+        <div class="cd">エリアの価格帯を瞬時に把握</div>
+        <div class="ci-list">
+          <div class="ci-row">調査ホテル件数・平均ADR</div>
+          <div class="ci-row">最低価格 / 最高価格</div>
+          <div class="ci-row">平日・休日・繁忙期 ADR 自動算出</div>
+          <div class="ci-row">エリア平均評価スコア</div>
+        </div>
+        <div class="tags"><span class="tag tbl">平日比 休日+XX% 表示</span></div>
+      </div>
+
+      <div class="card">
+        <div class="card-bar bar-rose"></div>
+        <div class="card-head"><span class="ci">🏆</span><span class="ct">競合比較タブ</span></div>
+        <div class="cd">周辺ホテルを横並びで比較</div>
+        <div class="ci-list">
+          <div class="ci-row">料金順・評価順でソート</div>
+          <div class="ci-row">最大 20 件を一覧表示</div>
+          <div class="ci-row">Booking.com 詳細ページへ直リンク</div>
+        </div>
+        <div class="tags"><span class="tag tro">クリックでソート</span></div>
+      </div>
+
+      <div class="card">
+        <div class="card-bar bar-cyan"></div>
+        <div class="card-head"><span class="ci">📅</span><span class="ct">価格推移タブ</span></div>
+        <div class="cd">12ヶ月の季節変動をグラフ化</div>
+        <div class="ci-list">
+          <div class="ci-row">月別 平日 / 休日 / 繁忙期 ADR</div>
+          <div class="ci-row">GW・夏休み・年末年始を自動反映</div>
+          <div class="ci-row">棒グラフ + 数値テーブル併記</div>
+        </div>
+        <div class="tags"><span class="tag tcy">12 ヶ月自動生成</span></div>
+      </div>
+
+      <div class="card">
+        <div class="card-bar bar-amber"></div>
+        <div class="card-head"><span class="ci">📋</span><span class="ct">要因分析タブ</span></div>
+        <div class="cd">需要変動の背景を自動解説</div>
+        <div class="ci-list">
+          <div class="ci-row">祝日・イベント（GW・花見 等）</div>
+          <div class="ci-row">インバウンド動向・円安影響</div>
+          <div class="ci-row">宿泊 CPI 上昇率（2024 年実績）</div>
+          <div class="ci-row">天候・季節ノート（月別）</div>
+        </div>
+        <div class="tags"><span class="tag tam">2024 / 2025 年対応</span></div>
+      </div>
+
+      <div class="card">
+        <div class="card-bar bar-green"></div>
+        <div class="card-head"><span class="ci">🗺️</span><span class="ct">地図タブ</span></div>
+        <div class="cd">ホテル分布を地図で可視化</div>
+        <div class="ci-list">
+          <div class="ci-row">OpenStreetMap インタラクティブ地図</div>
+          <div class="ci-row">調査エリア円（半径表示）</div>
+          <div class="ci-row">各ホテルのピンマーカー</div>
+        </div>
+        <div class="tags"><span class="tag tgn">半径サークル表示</span></div>
+      </div>
+
+      <div class="card">
+        <div class="card-bar bar-purple"></div>
+        <div class="card-head"><span class="ci">🤖</span><span class="ct">AI 投資分析</span></div>
+        <div class="cd">Gemini AI が投資判断レポートを生成</div>
+        <div class="ci-list">
+          <div class="ci-row">市場規模・競合環境の評価</div>
+          <div class="ci-row">RevPAR 推定（稼働率 80%想定）</div>
+          <div class="ci-row">投資リスク・機会・参入戦略</div>
+        </div>
+        <div class="tags">
+          <span class="tag tpu">Gemini 1.5 Flash</span>
+          <span class="tag tgr">500〜800字レポート</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Roadmap -->
+    <div class="roadmap">
+      <div class="rm-label">🚀 開発ロードマップ（白井様ご要望）</div>
+      <div class="rm-items">
+        <div class="rm-item"><span class="rm-num">①</span>じゃらん・一休・楽天 データ追加</div>
+        <div class="rm-item"><span class="rm-num">②</span>Booking.com 実スクレイピング対応</div>
+        <div class="rm-item"><span class="rm-num">③</span>過去データ蓄積・時系列グラフ比較</div>
+        <div class="rm-item"><span class="rm-num">④</span>PDF 報告書 自動生成・一括出力</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>
