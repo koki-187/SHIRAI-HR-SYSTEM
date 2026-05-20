@@ -6,6 +6,7 @@ import SurveyForm from '@/components/SurveyForm';
 import ResultTabs from '@/components/ResultTabs';
 import HistoryPanel from '@/components/HistoryPanel';
 import HistoryComparison from '@/components/HistoryComparison';
+import ErrorBoundary from '@/components/ErrorBoundary';
 import { scrapeHotels } from '@/lib/api';
 import { ScrapeResponse, SurveyParams, SurveyHistory } from '@/types';
 
@@ -118,6 +119,13 @@ export default function DashboardPage() {
               </div>
             )}
 
+            {loading && history.length === 0 && (
+              <div className="bg-white rounded-xl shadow-sm p-4 text-center text-gray-400">
+                <div className="animate-spin h-5 w-5 border-2 border-blue-400 border-t-transparent rounded-full mx-auto mb-2" />
+                <p className="text-xs">履歴を読み込み中...</p>
+              </div>
+            )}
+
             <HistoryPanel
               history={history}
               onSelect={handleHistorySelect}
@@ -129,18 +137,23 @@ export default function DashboardPage() {
           <div className="lg:col-span-2">
             {result && currentParams ? (
               <div className="space-y-6">
-                <ResultTabs data={result} params={currentParams} />
-                <HistoryComparison history={history} currentLocation={currentParams.location} />
+                <ErrorBoundary>
+                  <ResultTabs data={result} params={currentParams} />
+                </ErrorBoundary>
+                <ErrorBoundary>
+                  <HistoryComparison history={history} currentLocation={currentParams.location} />
+                </ErrorBoundary>
               </div>
             ) : (
               <div className="bg-white rounded-xl shadow-sm p-12 text-center text-gray-400">
-                <p className="text-4xl mb-4">🏨</p>
-                <p className="text-lg font-medium">調査エリアを入力してください</p>
-                <p className="text-sm mt-2">
-                  住所・駅名・エリア名を入力して「調査開始」を押すと
-                  <br />
-                  周辺ホテルの料金データを収集・分析します
-                </p>
+                <p className="text-5xl mb-4">🏨</p>
+                <p className="text-lg font-semibold text-gray-600 mb-2">エリア調査を開始しましょう</p>
+                <div className="text-sm text-gray-400 space-y-1 mt-4">
+                  <p>① 左のフォームで調査エリアを入力</p>
+                  <p>② 「調査開始」ボタンを押す</p>
+                  <p>③ 周辺ホテルのADR分析結果が表示されます</p>
+                </div>
+                <p className="text-xs text-gray-300 mt-6">対応エリア：渋谷・新宿・梅田・京都・名古屋・博多・札幌・横浜 ほか全国</p>
               </div>
             )}
           </div>

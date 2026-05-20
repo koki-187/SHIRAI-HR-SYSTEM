@@ -264,9 +264,10 @@ export default function ExportButtons({ data }: { data: ScrapeResponse }) {
   };
 
   return (
-    <div className="flex gap-3">
+    <div className="flex flex-col sm:flex-row gap-2">
       <button
         onClick={exportExcel}
+        aria-label="Excel形式でデータをエクスポート"
         className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow-sm"
       >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -276,6 +277,7 @@ export default function ExportButtons({ data }: { data: ScrapeResponse }) {
       </button>
       <button
         onClick={exportPdf}
+        aria-label="PDF形式でレポートをエクスポート"
         className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow-sm"
       >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

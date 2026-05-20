@@ -102,8 +102,10 @@ export default function HistoryComparison({ history, currentLocation }: Props) {
   // ADR変化サマリー（最古 vs 最新）
   const oldest = displayHistory[displayHistory.length - 1];
   const newest = displayHistory[0];
-  const oldAvgAdr = oldest.result.monthly_stats.reduce((s, m) => s + m.weekday_avg, 0) / 12;
-  const newAvgAdr = newest.result.monthly_stats.reduce((s, m) => s + m.weekday_avg, 0) / 12;
+  const oldLen = oldest.result.monthly_stats.length || 1;
+  const newLen = newest.result.monthly_stats.length || 1;
+  const oldAvgAdr = oldest.result.monthly_stats.reduce((s, m) => s + m.weekday_avg, 0) / oldLen;
+  const newAvgAdr = newest.result.monthly_stats.reduce((s, m) => s + m.weekday_avg, 0) / newLen;
   const change = ((newAvgAdr - oldAvgAdr) / oldAvgAdr * 100).toFixed(1);
   const isUp = newAvgAdr >= oldAvgAdr;
 

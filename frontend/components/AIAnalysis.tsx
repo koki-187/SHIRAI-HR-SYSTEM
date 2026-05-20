@@ -57,7 +57,18 @@ ${data.monthly_stats.map(s => `  ${s.month}: 平日¥${s.weekday_avg.toLocaleStr
       if (!res.ok) throw new Error(result.error || 'API エラー');
       setAnalysis(result.text || '分析結果が空です');
     } catch (e) {
-      setError(`分析失敗: ${e instanceof Error ? e.message : String(e)}`);
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg.includes('Gemini APIキー') || msg.includes('登録されていません')) {
+        setError('Gemini APIキーが未登録です。フォームの「登録する」からAPIキーを保存してください。');
+      } else if (msg.includes('401') || msg.includes('403')) {
+        setError('APIキーが無効です。正しいGemini APIキーを再登録してください。');
+      } else if (msg.includes('429')) {
+        setError('APIレート制限に達しました。しばらく待ってから再試行してください。');
+      } else if (msg.includes('timeout') || msg.includes('504')) {
+        setError('分析がタイムアウトしました。再試行してください。');
+      } else {
+        setError(`分析失敗: ${msg}`);
+      }
     } finally {
       setLoading(false);
     }

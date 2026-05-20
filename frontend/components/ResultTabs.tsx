@@ -25,12 +25,19 @@ interface Props {
 export default function ResultTabs({ data, params }: Props) {
   const [activeTab, setActiveTab] = useState('overview');
   const [factors, setFactors] = useState<FactorsData | null>(null);
+  const [factorsError, setFactorsError] = useState(false);
 
   useEffect(() => {
     fetch('/api/factors?year=2024')
-      .then(r => r.json())
+      .then(r => {
+        if (!r.ok) throw new Error(`${r.status}`);
+        return r.json();
+      })
       .then(setFactors)
-      .catch(() => {});
+      .catch((e) => {
+        console.error('[ResultTabs] factors fetch failed:', e);
+        setFactorsError(true);
+      });
   }, []);
 
   return (
@@ -53,12 +60,15 @@ export default function ResultTabs({ data, params }: Props) {
         <ExportButtons data={data} />
       </div>
 
-      <div className="flex gap-1 bg-gray-100 p-1 rounded-xl flex-wrap">
+      <div className="flex gap-1 bg-gray-100 p-1 rounded-xl overflow-x-auto">
         {TABS.map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition min-w-[80px] ${
+            role="tab"
+            aria-selected={activeTab === tab.id}
+            aria-controls={`tabpanel-${tab.id}`}
+            className={`flex-shrink-0 py-2 px-3 rounded-lg text-sm font-medium transition min-w-[64px] ${
               activeTab === tab.id
                 ? 'bg-white text-blue-600 shadow-sm'
                 : 'text-gray-600 hover:text-gray-800'
@@ -69,11 +79,11 @@ export default function ResultTabs({ data, params }: Props) {
         ))}
       </div>
 
-      <div>
+      <div role="tabpanel" id={`tabpanel-${activeTab}`}>
         {activeTab === 'overview' && <OverviewTab data={data} />}
         {activeTab === 'comparison' && <ComparisonTab hotels={data.hotels} />}
         {activeTab === 'trend' && <TrendTab stats={data.monthly_stats} />}
-        {activeTab === 'factors' && <FactorsTab factors={factors} />}
+        {activeTab === 'factors' && <FactorsTab factors={factors} error={factorsError} />}
         {activeTab === 'map' && (
           <MapTab
             hotels={data.hotels}

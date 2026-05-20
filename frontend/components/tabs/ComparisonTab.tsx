@@ -1,12 +1,33 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { HotelData } from '@/types';
 
 type SortKey = 'price_per_night' | 'rating' | 'name';
 
+const safeUrl = (url: string) => {
+  try {
+    const u = new URL(url);
+    return ['http:', 'https:'].includes(u.protocol) ? url : '#';
+  } catch { return '#'; }
+};
+
 export default function ComparisonTab({ hotels }: { hotels: HotelData[] }) {
   const [sortKey, setSortKey] = useState<SortKey>('price_per_night');
   const [sortAsc, setSortAsc] = useState(true);
+
+  useEffect(() => {
+    setSortKey('price_per_night');
+    setSortAsc(true);
+  }, [hotels]);
+
+  if (!hotels || hotels.length === 0) {
+    return (
+      <div className="bg-white rounded-xl p-12 text-center text-gray-400">
+        <p className="text-3xl mb-3">🏨</p>
+        <p className="text-sm">ホテルデータがありません</p>
+      </div>
+    );
+  }
 
   const sorted = [...hotels].sort((a, b) => {
     const av = a[sortKey] ?? (sortKey === 'rating' ? 0 : '');
@@ -24,15 +45,18 @@ export default function ComparisonTab({ hotels }: { hotels: HotelData[] }) {
   const Th = ({ k, label }: { k: SortKey; label: string }) => (
     <th
       onClick={() => handleSort(k)}
+      aria-sort={sortKey === k ? (sortAsc ? 'ascending' : 'descending') : 'none'}
       className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100 select-none"
     >
-      {label} {sortKey === k ? (sortAsc ? '↑' : '↓') : ''}
+      {label} {sortKey === k ? (sortAsc ? '↑' : '↓') : <span className="text-gray-300">↕</span>}
     </th>
   );
 
   return (
     <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto relative">
+        {/* スクロールヒント */}
+        <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-white to-transparent pointer-events-none z-10 sm:hidden" />
         <table className="w-full text-sm">
           <thead className="bg-gray-50">
             <tr>
@@ -66,7 +90,7 @@ export default function ComparisonTab({ hotels }: { hotels: HotelData[] }) {
                 </td>
                 <td className="px-4 py-3">
                   {hotel.url && (
-                    <a href={hotel.url} target="_blank" rel="noopener" className="text-blue-500 hover:underline text-xs">
+                    <a href={safeUrl(hotel.url)} target="_blank" rel="noopener" className="text-blue-500 hover:underline text-xs">
                       詳細 →
                     </a>
                   )}

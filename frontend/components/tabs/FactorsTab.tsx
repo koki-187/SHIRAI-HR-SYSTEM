@@ -1,10 +1,30 @@
 'use client';
 import { FactorsData } from '@/types';
 
-export default function FactorsTab({ factors }: { factors: FactorsData | null }) {
-  if (!factors) {
+interface Props {
+  factors: FactorsData | null;
+  error?: boolean;
+}
+
+export default function FactorsTab({ factors, error }: Props) {
+  if (error) {
     return (
-      <div className="text-gray-400 p-4 text-center">要因データを読み込み中...</div>
+      <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
+        <p className="text-red-500 text-sm">要因データの読み込みに失敗しました</p>
+      </div>
+    );
+  }
+
+  if (!factors && !error) {
+    return (
+      <div className="space-y-4">
+        {[1,2,3,4,5,6].map(i => (
+          <div key={i} className="bg-white rounded-xl p-4 animate-pulse">
+            <div className="h-4 bg-gray-200 rounded w-1/4 mb-3" />
+            <div className="h-3 bg-gray-100 rounded w-3/4" />
+          </div>
+        ))}
+      </div>
     );
   }
 
@@ -13,7 +33,7 @@ export default function FactorsTab({ factors }: { factors: FactorsData | null })
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <FactorCard title="主要祝日" color="blue">
           <ul className="space-y-1">
-            {factors.holidays.slice(0, 15).map((h, i) => (
+            {factors!.holidays.slice(0, 15).map((h, i) => (
               <li key={i} className="flex gap-2 text-sm">
                 <span className="text-gray-400 w-16 shrink-0">{h.date}</span>
                 <span>{h.name}</span>
@@ -24,7 +44,7 @@ export default function FactorsTab({ factors }: { factors: FactorsData | null })
 
         <FactorCard title="主要イベント・繁忙期" color="orange">
           <ul className="space-y-2">
-            {factors.events.map((e, i) => (
+            {factors!.events.map((e, i) => (
               <li key={i} className="text-sm">
                 <span className="font-medium">{e.name}</span>
                 <span className="text-gray-400 ml-2 text-xs">{e.period}</span>
@@ -35,19 +55,19 @@ export default function FactorsTab({ factors }: { factors: FactorsData | null })
         </FactorCard>
 
         <FactorCard title="天候・季節要因" color="cyan">
-          <p className="text-sm text-gray-700 whitespace-pre-line">{factors.weather_notes}</p>
+          <p className="text-sm text-gray-700 whitespace-pre-line">{factors!.weather_notes}</p>
         </FactorCard>
 
         <FactorCard title="インバウンド動向" color="green">
-          <p className="text-sm text-gray-700">{factors.inbound_trend}</p>
+          <p className="text-sm text-gray-700">{factors!.inbound_trend}</p>
         </FactorCard>
 
         <FactorCard title="為替動向" color="yellow">
-          <p className="text-sm text-gray-700">{factors.forex_note}</p>
+          <p className="text-sm text-gray-700">{factors!.forex_note}</p>
         </FactorCard>
 
         <FactorCard title="宿泊費・CPI" color="purple">
-          <p className="text-sm text-gray-700">{factors.cpi_note}</p>
+          <p className="text-sm text-gray-700">{factors!.cpi_note}</p>
         </FactorCard>
       </div>
     </div>

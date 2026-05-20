@@ -10,6 +10,20 @@ interface Props {
   centerLng: number;
 }
 
-export default function MapTab(props: Props) {
-  return <MapComponent {...props} />;
+export default function MapTab({ hotels, centerLat, centerLng }: Props) {
+  if (!hotels || hotels.length === 0) {
+    return (
+      <div className="bg-white rounded-xl p-8 text-center text-gray-400">
+        <p className="text-2xl mb-2">🗺️</p>
+        <p className="text-sm">地図に表示するホテルがありません</p>
+      </div>
+    );
+  }
+
+  const validHotels = hotels.filter(h =>
+    h.lat != null && h.lng != null &&
+    isFinite(h.lat) && isFinite(h.lng)
+  );
+
+  return <MapComponent hotels={validHotels} centerLat={centerLat} centerLng={centerLng} />;
 }

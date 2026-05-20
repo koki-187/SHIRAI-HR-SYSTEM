@@ -8,8 +8,12 @@ interface Props {
 }
 
 export default function SurveyForm({ onSubmit, loading }: Props) {
-  const today = new Date().toISOString().split('T')[0];
-  const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const toLocalDateStr = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  const today = toLocalDateStr(new Date());
+  const tomorrowDate = new Date();
+  tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+  const tomorrow = toLocalDateStr(tomorrowDate);
 
   const [params, setParams] = useState<SurveyParams>({
     location: '',
@@ -28,16 +32,26 @@ export default function SurveyForm({ onSubmit, loading }: Props) {
   const [savingKey, setSavingKey] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
     fetch('/api/user/profile').then(r => {
-      if (r.status === 401) { setHasApiKey(null); return null; } // admin: hide key UI
+      if (cancelled) return;
+      if (r.status === 401) { setHasApiKey(null); return null; }
       return r.json();
     }).then(d => {
-      if (d) setHasApiKey(d.hasKey ?? false);
-    }).catch(() => setHasApiKey(false));
+      if (!cancelled && d) setHasApiKey(d.hasKey ?? false);
+    }).catch(() => {
+      if (!cancelled) setHasApiKey(false);
+    });
+    return () => { cancelled = true; };
   }, []);
 
   const saveApiKey = async () => {
     if (!newKey.trim()) return;
+    // 基本フォーマットチェック（Gemini APIキーは AIza で始まる39文字）
+    if (!newKey.trim().startsWith('AIza') || newKey.trim().length < 35) {
+      setKeyMsg('無効なAPIキー形式です（AIzaSy...から始まる文字列を入力してください）');
+      return;
+    }
     setSavingKey(true);
     const res = await fetch('/api/user/profile', {
       method: 'PUT',
@@ -228,7 +242,7 @@ export default function SurveyForm({ onSubmit, loading }: Props) {
 
           <p className="text-xs text-gray-400 mt-1">
             キーはサーバー側で暗号化保存されます。
-            <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener"
+            <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer"
               className="text-blue-500 hover:underline ml-1">
               Google AI Studioで無料取得
             </a>

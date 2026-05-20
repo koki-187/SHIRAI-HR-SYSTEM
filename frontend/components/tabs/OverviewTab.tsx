@@ -4,6 +4,14 @@ import { ScrapeResponse } from '@/types';
 export default function OverviewTab({ data }: { data: ScrapeResponse }) {
   const { hotels, monthly_stats } = data;
 
+  if (!hotels || hotels.length === 0) {
+    return (
+      <div className="bg-white rounded-xl p-8 text-center text-gray-400">
+        <p className="text-sm">ホテルデータがありません</p>
+      </div>
+    );
+  }
+
   const avgPrice = hotels.reduce((s, h) => s + h.price_per_night, 0) / hotels.length;
   const minPrice = Math.min(...hotels.map(h => h.price_per_night));
   const maxPrice = Math.max(...hotels.map(h => h.price_per_night));
@@ -12,8 +20,9 @@ export default function OverviewTab({ data }: { data: ScrapeResponse }) {
     ? ratedHotels.reduce((s, h) => s + (h.rating || 0), 0) / ratedHotels.length
     : 0;
 
-  const weekdayAvg = monthly_stats.reduce((s, m) => s + m.weekday_avg, 0) / monthly_stats.length;
-  const weekendAvg = monthly_stats.reduce((s, m) => s + m.weekend_avg, 0) / monthly_stats.length;
+  const statLen = monthly_stats.length || 1;
+  const weekdayAvg = monthly_stats.reduce((s, m) => s + m.weekday_avg, 0) / statLen;
+  const weekendAvg = monthly_stats.reduce((s, m) => s + m.weekend_avg, 0) / statLen;
   const peakMonths = monthly_stats.filter(m => m.peak_avg);
   const peakAvg = peakMonths.length > 0
     ? peakMonths.reduce((s, m) => s + (m.peak_avg || 0), 0) / peakMonths.length
@@ -53,6 +62,21 @@ export default function OverviewTab({ data }: { data: ScrapeResponse }) {
         </div>
       </div>
 
+      <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-xs text-indigo-600 font-medium">RevPAR推定（稼働率80%想定）</p>
+            <p className="text-2xl font-bold text-indigo-800 mt-1">
+              ¥{Math.round(weekdayAvg * 0.8).toLocaleString()}
+            </p>
+          </div>
+          <div className="text-right text-xs text-indigo-500">
+            <p>年間RevPAR</p>
+            <p className="text-lg font-semibold">¥{Math.round(weekdayAvg * 0.8 * 365).toLocaleString()}</p>
+          </div>
+        </div>
+      </div>
+
       {avgRating > 0 && (
         <div className="bg-yellow-50 border border-yellow-100 rounded-xl p-4">
           <p className="text-sm text-gray-600">
@@ -69,6 +93,11 @@ export default function OverviewTab({ data }: { data: ScrapeResponse }) {
         <p className="text-sm text-gray-500">
           座標: {data.geocoded_lat.toFixed(4)}, {data.geocoded_lng.toFixed(4)}
         </p>
+        {data.data_source && (
+          <div className="text-xs text-gray-400 text-right mt-2">
+            データソース: {data.data_source === 'rakuten' ? '楽天トラベル API' : data.data_source === 'seed' ? '実在データ（シード）' : 'モックデータ'}
+          </div>
+        )}
       </div>
     </div>
   );

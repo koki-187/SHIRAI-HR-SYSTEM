@@ -16,6 +16,15 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend)
 const PEAK_MONTHS = [3, 4, 5, 8, 12];
 
 export default function TrendTab({ stats }: { stats: MonthlyStats[] }) {
+  if (!stats || stats.length === 0) {
+    return (
+      <div className="bg-white rounded-xl p-12 text-center text-gray-400">
+        <p className="text-3xl mb-3">📈</p>
+        <p className="text-sm">月別統計データがありません</p>
+      </div>
+    );
+  }
+
   const labels = stats.map(s => {
     const [, m] = s.month.split('-');
     return `${parseInt(m)}月`;
@@ -27,11 +36,12 @@ export default function TrendTab({ stats }: { stats: MonthlyStats[] }) {
       {
         label: '平日平均',
         data: stats.map(s => s.weekday_avg),
-        backgroundColor: stats.map((_, i) =>
-          PEAK_MONTHS.includes(i + 1)
+        backgroundColor: stats.map(s => {
+          const month = parseInt(s.month.split('-')[1]);
+          return PEAK_MONTHS.includes(month)
             ? 'rgba(234, 88, 12, 0.8)'
-            : 'rgba(59, 130, 246, 0.8)'
-        ),
+            : 'rgba(59, 130, 246, 0.8)';
+        }),
       },
       {
         label: '休日平均',
@@ -43,6 +53,7 @@ export default function TrendTab({ stats }: { stats: MonthlyStats[] }) {
 
   const options = {
     responsive: true,
+    maintainAspectRatio: false,
     plugins: {
       legend: { position: 'top' as const },
       title: { display: true, text: '月別平均宿泊単価（ADR）推移' },
@@ -72,7 +83,9 @@ export default function TrendTab({ stats }: { stats: MonthlyStats[] }) {
           休日
         </span>
       </div>
-      <Bar data={data} options={options} />
+      <div className="h-64">
+        <Bar data={data} options={options} />
+      </div>
 
       <div className="mt-6 overflow-x-auto">
         <table className="w-full text-sm">
@@ -87,18 +100,21 @@ export default function TrendTab({ stats }: { stats: MonthlyStats[] }) {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {stats.map((s, i) => (
-              <tr key={s.month} className={PEAK_MONTHS.includes(i + 1) ? 'bg-orange-50' : ''}>
-                <td className="px-3 py-2 font-medium">{parseInt(s.month.split('-')[1])}月</td>
-                <td className="px-3 py-2 text-right">¥{s.weekday_avg.toLocaleString()}</td>
-                <td className="px-3 py-2 text-right">¥{s.weekend_avg.toLocaleString()}</td>
-                <td className="px-3 py-2 text-right">
-                  {s.peak_avg ? `¥${s.peak_avg.toLocaleString()}` : '-'}
-                </td>
-                <td className="px-3 py-2 text-right text-gray-500">¥{s.min_price.toLocaleString()}</td>
-                <td className="px-3 py-2 text-right text-gray-500">¥{s.max_price.toLocaleString()}</td>
-              </tr>
-            ))}
+            {stats.map(s => {
+              const month = parseInt(s.month.split('-')[1]);
+              return (
+                <tr key={s.month} className={PEAK_MONTHS.includes(month) ? 'bg-orange-50' : ''}>
+                  <td className="px-3 py-2 font-medium">{month}月</td>
+                  <td className="px-3 py-2 text-right">¥{s.weekday_avg.toLocaleString()}</td>
+                  <td className="px-3 py-2 text-right">¥{s.weekend_avg.toLocaleString()}</td>
+                  <td className="px-3 py-2 text-right">
+                    {s.peak_avg ? `¥${s.peak_avg.toLocaleString()}` : '-'}
+                  </td>
+                  <td className="px-3 py-2 text-right text-gray-500">¥{s.min_price.toLocaleString()}</td>
+                  <td className="px-3 py-2 text-right text-gray-500">¥{s.max_price.toLocaleString()}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

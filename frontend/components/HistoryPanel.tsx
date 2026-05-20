@@ -4,10 +4,18 @@ import { SurveyHistory } from '@/types';
 interface Props {
   history: SurveyHistory[];
   onSelect: (h: SurveyHistory) => void;
-  onDelete: (id: string) => void;
+  onDelete: (id: string) => Promise<void> | void;
 }
 
 export default function HistoryPanel({ history, onSelect, onDelete }: Props) {
+  const handleDelete = async (id: string) => {
+    if (!confirm('この履歴を削除しますか？')) return;
+    try {
+      await onDelete(id);
+    } catch {
+      alert('削除に失敗しました。再試行してください。');
+    }
+  };
   if (history.length === 0) {
     return (
       <div className="bg-white rounded-xl p-6 shadow-sm text-center">
@@ -50,7 +58,7 @@ export default function HistoryPanel({ history, onSelect, onDelete }: Props) {
                   </div>
                 </button>
                 <button
-                  onClick={() => onDelete(h.id)}
+                  onClick={() => handleDelete(h.id)}
                   className="text-gray-300 hover:text-red-400 transition-colors mt-1 shrink-0"
                   title="削除"
                 >
