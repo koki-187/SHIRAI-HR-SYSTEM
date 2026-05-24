@@ -5,9 +5,10 @@ interface Props {
   history: SurveyHistory[];
   onSelect: (h: SurveyHistory) => void;
   onDelete: (id: string) => Promise<void> | void;
+  isLoading?: boolean;
 }
 
-export default function HistoryPanel({ history, onSelect, onDelete }: Props) {
+export default function HistoryPanel({ history, onSelect, onDelete, isLoading }: Props) {
   const handleDelete = async (id: string) => {
     if (!confirm('この履歴を削除しますか？')) return;
     try {
@@ -16,10 +17,24 @@ export default function HistoryPanel({ history, onSelect, onDelete }: Props) {
       alert('削除に失敗しました。再試行してください。');
     }
   };
+  if (isLoading) {
+    return (
+      <div className="bg-white rounded-xl shadow-sm p-4 animate-pulse">
+        <div className="h-4 bg-gray-100 rounded w-1/3 mb-3" />
+        {[1,2].map(i => (
+          <div key={i} className="py-3 border-b border-gray-50 last:border-0">
+            <div className="h-3 bg-gray-100 rounded w-2/3 mb-2" />
+            <div className="h-2.5 bg-gray-100 rounded w-1/2" />
+          </div>
+        ))}
+      </div>
+    );
+  }
   if (history.length === 0) {
     return (
       <div className="bg-white rounded-xl p-6 shadow-sm text-center">
-        <p className="text-gray-400 text-sm">調査履歴がありません</p>
+        <p className="text-3xl mb-2">📋</p>
+        <p className="text-gray-500 text-sm font-medium">調査履歴がありません</p>
         <p className="text-gray-300 text-xs mt-1">調査を実行すると自動保存されます</p>
       </div>
     );

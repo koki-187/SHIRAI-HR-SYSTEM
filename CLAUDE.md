@@ -5,7 +5,7 @@
 - Backend: Python FastAPI
 - AI: Gemini API (google-generativeai)
 - Auth: NextAuth.js (Credentials Provider) + bcryptjs
-- DB: SQLite (better-sqlite3) ※ローカル永続化
+- DB: Neon PostgreSQL（本番 / DATABASE_URL 設定時）| JSON ファイルストア（ローカル / DATABASE_URL 未設定時）
 - Map: Leaflet + OpenStreetMap
 - Export: jsPDF + xlsx
 - Deploy: Vercel (Frontend) + Railway or Render (Backend)
@@ -55,6 +55,7 @@ hotelscope/
 4. 完了後に変更サマリーを日本語で報告
 
 ### HotelScope固有ルール
-- GeminiAPIキーはユーザーごとにフロントから送信（サーバー保管しない）
+- GeminiAPIキーはユーザーごとに暗号化してDBに保存（NEXTAUTH_SECRETから派生した AES-256-GCM キーで暗号化）
+- 管理者の Gemini キーは ADMIN_GEMINI_KEY 環境変数から取得
 - スクレイピングは1リクエスト/3秒以上の間隔を守る
-- DBはSQLiteで十分（ユーザー数2〜3人）
+- 本番DBはNeon PostgreSQL（DATABASE_URL環境変数）、未設定時はJSONファイルストアにフォールバック

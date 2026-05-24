@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { getGeminiKey } from '@/lib/db';
+import { getGeminiKey, saveSnapshot, toAreaKey, initSchema } from '@/lib/db';
 import { decryptApiKey } from '@/lib/crypto';
 import { HotelData, MonthlyStats } from '@/types';
 import { findSeedHotels, generateSeedMonthlyStats, attachRoomTypes } from '@/lib/seed-hotels';
+import { fetchJalanHotels, toJalanDate } from '@/lib/jalan';
+import { fetchBookingHotels, isBookingEnabled } from '@/lib/booking-com';
+import { simpleHotelSearch, vacantHotelSearch } from '@/lib/rakuten';
+import { checkRateLimit, getIdentifier } from '@/lib/rate-limit';
 
 // ---- Geocoding via Nominatim ----
 async function geocode(location: string): Promise<{ lat: number; lng: number; display_name: string }> {
@@ -20,91 +24,28 @@ async function geocode(location: string): Promise<{ lat: number; lng: number; di
   return { lat: parseFloat(hit.lat), lng: parseFloat(hit.lon), display_name: hit.display_name };
 }
 
-// ---- Rakuten Travel API ----
+// ---- Rakuten Travel API (Vacant優先・Simpleフォールバック) ----
 async function fetchRakutenHotels(
   lat: number, lng: number,
   checkIn: string, checkOut: string,
   hotelType: string
-): Promise<HotelData[] | null> {
+): Promise<{ hotels: HotelData[]; source: 'rakuten_vacant' | 'rakuten' } | null> {
   const appId = process.env.RAKUTEN_APP_ID;
   if (!appId) return null;
 
-  try {
-    const params = new URLSearchParams({
-      applicationId: appId,
-      format: 'json',
-      latitude: String(lat),
-      longitude: String(lng),
-      searchRadius: '3',
-      datumType: '1',
-      hits: '30',
-      sort: 'standard',
-    });
+  const opts = { lat, lng, checkIn, checkOut, hotelType, hits: 30, radius: 3 };
 
-    if (checkIn) params.set('checkinDate', checkIn.replace(/-/g, ''));
-    if (checkOut) params.set('checkoutDate', checkOut.replace(/-/g, ''));
-    if (hotelType === 'business') params.set('hotelType', 'BusinessHotel');
-    else if (hotelType === 'resort') params.set('hotelType', 'Resort');
-    else if (hotelType === 'budget') params.set('hotelType', 'GuestHouse');
-
-    const url = `https://app.rakuten.co.jp/services/api/Travel/SimpleHotelSearch/20170426?${params}`;
-    const res = await fetch(url, { signal: AbortSignal.timeout(12_000) });
-    if (!res.ok) return null;
-
-    const json = await res.json();
-    if (!json.hotels || !Array.isArray(json.hotels)) return null;
-
-    const hotels: HotelData[] = json.hotels
-      .map((entry: any[]) => {
-        const basic = entry.find((e: any) => e.hotelBasicInfo)?.hotelBasicInfo;
-        if (!basic || !basic.hotelMinCharge) return null;
-        return {
-          name: basic.hotelName || '不明',
-          price_per_night: basic.hotelMinCharge,
-          rating: basic.reviewAverage ? parseFloat(basic.reviewAverage) : undefined,
-          review_count: basic.reviewCount || undefined,
-          url: basic.hotelInformationUrl || '',
-          lat: basic.latitude ? parseFloat(basic.latitude) : undefined,
-          lng: basic.longitude ? parseFloat(basic.longitude) : undefined,
-          source: 'rakuten',
-        } as HotelData;
-      })
-      .filter((h: HotelData | null): h is HotelData => h !== null);
-
-    return hotels.length > 0 ? hotels : null;
-  } catch {
-    return null;
+  // 日付あり → VacantHotelSearch（実際の空室料金）を優先
+  if (checkIn && checkOut) {
+    const vacant = await vacantHotelSearch(opts);
+    if (vacant && vacant.length > 0) return { hotels: vacant, source: 'rakuten_vacant' };
   }
-}
 
-// ---- Mock hotel data generator (deterministic by location) ----
-function generateMockHotels(lat: number, lng: number, checkIn: string, hotelType: string): HotelData[] {
-  const names = [
-    'ホテルグランデ', 'ビジネスホテルサクラ', 'シティホテル東横', 'ルートイン', 'コンフォートホテル',
-    'ドーミーイン', 'アパホテル', '東横INN', 'スーパーホテル', 'ダイワロイネット',
-    'ホテルマイステイズ', 'ソラリア西鉄ホテル', 'ワシントンホテル', 'クロスホテル', 'リッチモンドホテル',
-  ];
-  const basePriceMap: Record<string, number> = {
-    business: 8000, resort: 20000, budget: 5000, all: 10000,
-  };
-  const basePrice = basePriceMap[hotelType] ?? 10000;
+  // フォールバック: SimpleHotelSearch
+  const simple = await simpleHotelSearch(opts);
+  if (simple && simple.length > 0) return { hotels: simple, source: 'rakuten' };
 
-  const seed = (lat * 1000 + lng * 1000) | 0;
-  const rand = (i: number, min: number, max: number) => {
-    const x = Math.sin(seed + i * 127.1) * 43758.5453;
-    return min + (x - Math.floor(x)) * (max - min);
-  };
-
-  return names.map((name, i) => ({
-    name,
-    price_per_night: Math.round(basePrice * rand(i, 0.7, 2.5) / 100) * 100,
-    rating: Math.round(rand(i + 100, 7.0, 9.5) * 10) / 10,
-    review_count: Math.round(rand(i + 200, 50, 2000)),
-    url: `https://www.booking.com/hotel/jp/example${i}.ja.html`,
-    lat: lat + rand(i + 300, -0.02, 0.02),
-    lng: lng + rand(i + 400, -0.02, 0.02),
-    source: 'mock',
-  }));
+  return null;
 }
 
 // ---- Monthly stats aggregation ----
@@ -136,9 +77,40 @@ function aggregateMonthlyStats(hotels: HotelData[], year = 2024): MonthlyStats[]
   });
 }
 
+function getSourceLabel(source: string): string {
+  switch (source) {
+    case 'rakuten': return '楽天トラベル（リアルタイム）';
+    case 'rakuten_vacant': return '楽天トラベル VacantSearch（空室連動・リアルタイム）';
+    case 'booking': return 'Booking.com（リアルタイム）';
+    case 'jalan': return 'じゃらんnet（リアルタイム）';
+    case 'rakuten+booking': return '楽天 + Booking.com（リアルタイム）';
+    case 'seed': return '実在ホテルデータ（静的）';
+    case 'estimated': return '推計データ';
+    default: return source;
+  }
+}
+
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    // ── レート制限チェック ──
+    const userId = (session.user as any)?.id;
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0] ?? req.headers.get('x-real-ip') ?? undefined;
+    const rl = checkRateLimit(getIdentifier(userId, ip), 'survey');
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: 'リクエスト数の上限に達しました。しばらくお待ちください。' },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': String(Math.ceil((rl.resetAt - Date.now()) / 1000)),
+            'X-RateLimit-Limit': '20',
+            'X-RateLimit-Remaining': '0',
+          },
+        }
+      );
+    }
 
   try {
     const body = await req.json();
@@ -146,17 +118,24 @@ export async function POST(req: NextRequest) {
 
     if (!location) return NextResponse.json({ error: 'location is required' }, { status: 400 });
 
+    // 本番環境ではモックデータを禁止
+    if (process.env.NODE_ENV === 'production' && data_source === 'mock') {
+      return NextResponse.json(
+        { error: 'モックデータは本番環境では使用できません' },
+        { status: 400 }
+      );
+    }
+
     // Gemini key resolution (for future AI use)
-    let geminiKey = body.gemini_api_key || '';
-    if (!geminiKey) {
-      if ((session.user as any).isAdmin) {
-        geminiKey = process.env.ADMIN_GEMINI_KEY || '';
-      } else {
-        const userId = parseInt((session.user as any).id);
-        if (!isNaN(userId)) {
-          const enc = await getGeminiKey(userId);
-          if (enc) { try { geminiKey = decryptApiKey(enc); } catch { /* ignore */ } }
-        }
+    // クライアントから送られたgemini_api_keyは無視し、常にサーバー側から取得する
+    let geminiKey = '';
+    if ((session.user as any).isAdmin) {
+      geminiKey = process.env.ADMIN_GEMINI_KEY || '';
+    } else {
+      const userId = parseInt((session.user as any).id);
+      if (!isNaN(userId)) {
+        const enc = await getGeminiKey(userId);
+        if (enc) { try { geminiKey = decryptApiKey(enc); } catch { /* ignore */ } }
       }
     }
 
@@ -173,44 +152,119 @@ export async function POST(req: NextRequest) {
     let actualSource = 'mock';
 
     // ── データ取得優先順位 ──
-    // 1. 楽天トラベルAPI（data_source='rakuten' または 'auto' かつ RAKUTEN_APP_ID あり）
-    if (data_source === 'rakuten' || data_source === 'auto') {
-      const rakutenHotels = await fetchRakutenHotels(geo.lat, geo.lng, check_in, check_out, hotel_type);
-      if (rakutenHotels && rakutenHotels.length > 0) {
-        hotels = rakutenHotels;
+    // 1. 楽天トラベルAPI
+    if ((data_source === 'rakuten' || data_source === 'auto') && process.env.RAKUTEN_APP_ID) {
+      const result = await fetchRakutenHotels(geo.lat, geo.lng, check_in, check_out, hotel_type);
+      if (result && result.hotels.length > 0) {
+        hotels = result.hotels;
         monthly_stats = aggregateMonthlyStats(hotels);
-        actualSource = 'rakuten';
+        actualSource = result.source;
       }
     }
 
-    // 2. シードデータ（主要都市にマッチ）
-    if (hotels.length === 0 && data_source !== 'rakuten') {
+    // 2. Booking.com（RapidAPI）
+    if (hotels.length === 0 && (data_source === 'booking' || data_source === 'auto') && isBookingEnabled()) {
+      if (check_in && check_out) {
+        const bookingHotels = await fetchBookingHotels({
+          lat: geo.lat, lng: geo.lng,
+          checkIn: check_in, checkOut: check_out,
+        });
+        if (bookingHotels && bookingHotels.length > 0) {
+          hotels = bookingHotels;
+          monthly_stats = aggregateMonthlyStats(hotels);
+          actualSource = 'booking';
+        }
+      }
+    }
+
+    // 3. じゃらんnet API
+    if (hotels.length === 0 && (data_source === 'jalan' || data_source === 'auto') && process.env.JALAN_CLIENT_ID) {
+      const checkInJalan  = check_in  ? toJalanDate(check_in)  : '';
+      const checkOutJalan = check_out ? toJalanDate(check_out) : '';
+      if (checkInJalan && checkOutJalan) {
+        const jalanHotels = await fetchJalanHotels({
+          lat: geo.lat, lng: geo.lng,
+          checkIn: checkInJalan, checkOut: checkOutJalan,
+        });
+        if (jalanHotels && jalanHotels.length > 0) {
+          hotels = jalanHotels;
+          monthly_stats = aggregateMonthlyStats(hotels);
+          actualSource = 'jalan';
+        }
+      }
+    }
+
+    // 4. 複数OTA結合（autoモードで楽天取得済み + Booking.com補完）
+    if ((actualSource === 'rakuten' || actualSource === 'rakuten_vacant') && data_source === 'auto' && isBookingEnabled() && check_in && check_out) {
+      const bookingHotels = await fetchBookingHotels({
+        lat: geo.lat, lng: geo.lng,
+        checkIn: check_in, checkOut: check_out,
+      });
+      if (bookingHotels && bookingHotels.length > 0) {
+        // 名前で重複排除しながらマージ（Booking.com で補完）
+        const existingNames = new Set(hotels.map(h => h.name.substring(0, 8)));
+        const newHotels = bookingHotels.filter(h => !existingNames.has(h.name.substring(0, 8)));
+        if (newHotels.length > 0) {
+          hotels = [...hotels, ...newHotels.slice(0, 15)];
+          monthly_stats = aggregateMonthlyStats(hotels);
+          actualSource = 'rakuten+booking';
+        }
+      }
+    }
+
+    // 5. シードデータ（主要都市にマッチ）
+    if (hotels.length === 0 && data_source !== 'rakuten' && data_source !== 'jalan' && data_source !== 'booking') {
       const seedHotels = findSeedHotels(geo.lat, geo.lng);
       if (seedHotels && seedHotels.length > 0) {
-        // ホテルタイプフィルタ
         let filtered = seedHotels;
-        if (hotel_type === 'business') {
-          filtered = seedHotels.filter(h => h.price_per_night < 18000);
-        } else if (hotel_type === 'resort') {
-          filtered = seedHotels.filter(h => h.price_per_night >= 25000);
-        } else if (hotel_type === 'budget') {
-          filtered = seedHotels.filter(h => h.price_per_night < 10000);
-        }
+        if (hotel_type === 'business') filtered = seedHotels.filter(h => h.price_per_night < 18000);
+        else if (hotel_type === 'resort') filtered = seedHotels.filter(h => h.price_per_night >= 25000);
+        else if (hotel_type === 'budget') filtered = seedHotels.filter(h => h.price_per_night < 10000);
         hotels = filtered.length > 0 ? filtered : seedHotels;
         monthly_stats = generateSeedMonthlyStats(hotels);
         actualSource = 'seed';
       }
     }
 
-    // 3. モックデータ（フォールバック）
+    // 6. データなし（モック廃止 — エラーを返す）
     if (hotels.length === 0) {
-      hotels = generateMockHotels(geo.lat, geo.lng, check_in, hotel_type);
-      monthly_stats = aggregateMonthlyStats(hotels);
-      actualSource = 'mock';
+      return NextResponse.json({
+        error: 'このエリアのホテルデータが取得できませんでした。チェックイン日を指定するか、主要都市でお試しください。',
+        data_source: 'none',
+        geocoded_lat: geo.lat,
+        geocoded_lng: geo.lng,
+        search_address: geo.display_name,
+      }, { status: 200 }); // 200でエラー情報を返す（UIで処理）
     }
 
     // 部屋タイプデータを全ホテルに付与（㎡単価・RevPAR/㎡計算）
     const hotelsWithRooms = attachRoomTypes(hotels);
+
+    // ── 調査結果をスナップショットとして保存（非同期・エラー無視）──
+    try {
+      await initSchema();
+      const today    = new Date().toISOString().split('T')[0];
+      const avgADR   = Math.round(hotels.reduce((s, h) => s + h.price_per_night, 0) / hotels.length);
+      const minADR   = Math.min(...hotels.map(h => h.price_per_night));
+      const maxADR   = Math.max(...hotels.map(h => h.price_per_night));
+      const curMonth = new Date().getMonth();
+      const stat     = monthly_stats[curMonth] ?? monthly_stats[0];
+      await saveSnapshot({
+        areaKey:     toAreaKey(geo.lat, geo.lng),
+        areaName:    geo.display_name.split(',')[0] ?? location,
+        surveyDate:  today,
+        avgAdr:      avgADR,
+        minAdr:      minADR,
+        maxAdr:      maxADR,
+        weekdayAvg:  stat?.weekday_avg ?? avgADR,
+        weekendAvg:  stat?.weekend_avg ?? Math.round(avgADR * 1.3),
+        peakAvg:     stat?.peak_avg ?? null,
+        hotelCount:  hotels.length,
+        dataSource:  actualSource,
+        checkinDate: check_in || null,
+        otaSource:   actualSource,
+      });
+    } catch { /* スナップショット保存失敗は無視 */ }
 
     return NextResponse.json({
       hotels: hotelsWithRooms,
@@ -219,6 +273,8 @@ export async function POST(req: NextRequest) {
       geocoded_lng: geo.lng,
       search_address: geo.display_name,
       data_source: actualSource,
+      data_source_label: getSourceLabel(actualSource),
+      is_real_data: ['rakuten', 'rakuten_vacant', 'booking', 'jalan', 'rakuten+booking'].includes(actualSource),
     });
   } catch (e: any) {
     return NextResponse.json({ error: e.message || '不明なエラー' }, { status: 500 });

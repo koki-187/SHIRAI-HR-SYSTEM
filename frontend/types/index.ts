@@ -44,6 +44,8 @@ export interface ScrapeResponse {
   geocoded_lng: number;
   search_address: string;
   data_source?: string; // 実際に使用したデータソース
+  data_source_label?: string;  // 'Booking.com（リアルタイム）' など
+  is_real_data?: boolean;      // 実OTAデータかどうか
 }
 
 export interface SurveyParams {
@@ -53,7 +55,7 @@ export interface SurveyParams {
   hotel_type: 'all' | 'business' | 'resort' | 'budget';
   radius_km: number;
   gemini_api_key: string;
-  data_source?: 'auto' | 'seed' | 'rakuten' | 'mock'; // データソース選択
+  data_source?: 'auto' | 'seed' | 'rakuten' | 'jalan' | 'booking' | 'mock'; // データソース選択
 }
 
 export interface FactorsData {
@@ -65,6 +67,33 @@ export interface FactorsData {
   cpi_note: string;
 }
 
+/** 過去ADRスナップショット（時系列） */
+export interface PriceSnapshot {
+  survey_date: string;   // 'YYYY-MM-DD'
+  avg_adr:     number;
+  min_adr:     number;
+  max_adr:     number;
+  weekday_avg: number;
+  weekend_avg: number;
+  peak_avg:    number | null;
+  hotel_count: number;
+  data_source: string;   // 'rakuten' | 'seed' | 'estimated'
+}
+
+/** 仕入れ判断モード — 投資シミュレーションパラメータ */
+export interface InvestmentParams {
+  property_price: number;          // 物件価格（万円）
+  construction_cost: number;       // 建設・改装費（万円）
+  planned_rooms: number;           // 計画客室数
+  avg_room_size: number;           // 平均客室面積（㎡）
+  max_occupancy_per_room: number;  // 最大定員/室
+  loan_ratio: number;              // 借入比率（%）デフォルト90
+  interest_rate: number;           // 借入金利（%）
+  loan_term: number;               // 借入期間（年）
+  target_occ: number;              // 目標OCC（%）
+  operating_cost_ratio: number;    // 運営費率（%）デフォルト60
+}
+
 export interface SurveyHistory {
   id: string;
   location: string;
@@ -72,4 +101,23 @@ export interface SurveyHistory {
   created_at: string;
   params: SurveyParams;
   result: ScrapeResponse;
+}
+
+/** OCC（稼働率）データ */
+export interface OccStats {
+  prefName: string;
+  occRate: number;     // 0-100（%）
+  dataLabel: string;   // '2025年3月'
+  source: 'estat' | 'estimated';
+  sourceLabel: string;
+}
+
+/** データ品質ラベル */
+export type DataQuality = 'realtime' | 'static' | 'synthesized' | 'none';
+
+export interface DataSourceInfo {
+  source: string;
+  label: string;
+  quality: DataQuality;
+  isReal: boolean;
 }

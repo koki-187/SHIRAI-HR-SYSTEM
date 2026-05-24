@@ -1,62 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-
-const HOLIDAYS_2024 = [
-  { date: '2024-01-01', name: '元日', month: 1, day: 1, impact: 'high' },
-  { date: '2024-01-08', name: '成人の日', month: 1, day: 8, impact: 'medium' },
-  { date: '2024-02-11', name: '建国記念の日', month: 2, day: 11, impact: 'medium' },
-  { date: '2024-02-12', name: '建国記念の日 振替休日', month: 2, day: 12, impact: 'low' },
-  { date: '2024-02-23', name: '天皇誕生日', month: 2, day: 23, impact: 'medium' },
-  { date: '2024-03-20', name: '春分の日', month: 3, day: 20, impact: 'medium' },
-  { date: '2024-04-29', name: '昭和の日', month: 4, day: 29, impact: 'high' },
-  { date: '2024-05-03', name: '憲法記念日', month: 5, day: 3, impact: 'high' },
-  { date: '2024-05-04', name: 'みどりの日', month: 5, day: 4, impact: 'high' },
-  { date: '2024-05-05', name: 'こどもの日', month: 5, day: 5, impact: 'high' },
-  { date: '2024-05-06', name: 'こどもの日 振替休日', month: 5, day: 6, impact: 'high' },
-  { date: '2024-07-15', name: '海の日', month: 7, day: 15, impact: 'medium' },
-  { date: '2024-08-11', name: '山の日', month: 8, day: 11, impact: 'high' },
-  { date: '2024-08-12', name: '山の日 振替休日', month: 8, day: 12, impact: 'high' },
-  { date: '2024-09-16', name: '敬老の日', month: 9, day: 16, impact: 'medium' },
-  { date: '2024-09-22', name: '秋分の日', month: 9, day: 22, impact: 'medium' },
-  { date: '2024-10-14', name: 'スポーツの日', month: 10, day: 14, impact: 'medium' },
-  { date: '2024-11-03', name: '文化の日', month: 11, day: 3, impact: 'medium' },
-  { date: '2024-11-04', name: '文化の日 振替休日', month: 11, day: 4, impact: 'low' },
-  { date: '2024-11-23', name: '勤労感謝の日', month: 11, day: 23, impact: 'medium' },
-  { date: '2024-12-23', name: '年末休暇開始（慣例）', month: 12, day: 23, impact: 'high' },
-  { date: '2024-12-28', name: '官公庁御用納め', month: 12, day: 28, impact: 'high' },
-  { date: '2024-12-29', name: '年末年始連休', month: 12, day: 29, impact: 'high' },
-  { date: '2024-12-30', name: '年末年始連休', month: 12, day: 30, impact: 'high' },
-  { date: '2024-12-31', name: '大晦日', month: 12, day: 31, impact: 'high' },
-];
-
-const HOLIDAYS_2025 = [
-  { date: '2025-01-01', name: '元日', month: 1, day: 1, impact: 'high' },
-  { date: '2025-01-02', name: '年始連休', month: 1, day: 2, impact: 'high' },
-  { date: '2025-01-03', name: '年始連休', month: 1, day: 3, impact: 'high' },
-  { date: '2025-01-13', name: '成人の日', month: 1, day: 13, impact: 'medium' },
-  { date: '2025-02-11', name: '建国記念の日', month: 2, day: 11, impact: 'medium' },
-  { date: '2025-02-23', name: '天皇誕生日', month: 2, day: 23, impact: 'medium' },
-  { date: '2025-02-24', name: '天皇誕生日 振替休日', month: 2, day: 24, impact: 'low' },
-  { date: '2025-03-20', name: '春分の日', month: 3, day: 20, impact: 'medium' },
-  { date: '2025-04-29', name: '昭和の日', month: 4, day: 29, impact: 'high' },
-  { date: '2025-05-03', name: '憲法記念日', month: 5, day: 3, impact: 'high' },
-  { date: '2025-05-04', name: 'みどりの日', month: 5, day: 4, impact: 'high' },
-  { date: '2025-05-05', name: 'こどもの日', month: 5, day: 5, impact: 'high' },
-  { date: '2025-05-06', name: 'みどりの日 振替休日', month: 5, day: 6, impact: 'high' },
-  { date: '2025-07-21', name: '海の日', month: 7, day: 21, impact: 'medium' },
-  { date: '2025-08-11', name: '山の日', month: 8, day: 11, impact: 'high' },
-  { date: '2025-09-15', name: '敬老の日', month: 9, day: 15, impact: 'medium' },
-  { date: '2025-09-23', name: '秋分の日', month: 9, day: 23, impact: 'medium' },
-  { date: '2025-10-13', name: 'スポーツの日', month: 10, day: 13, impact: 'medium' },
-  { date: '2025-11-03', name: '文化の日', month: 11, day: 3, impact: 'medium' },
-  { date: '2025-11-23', name: '勤労感謝の日', month: 11, day: 23, impact: 'medium' },
-  { date: '2025-11-24', name: '勤労感謝の日 振替休日', month: 11, day: 24, impact: 'low' },
-  { date: '2025-12-28', name: '官公庁御用納め', month: 12, day: 28, impact: 'high' },
-  { date: '2025-12-29', name: '年末年始連休', month: 12, day: 29, impact: 'high' },
-  { date: '2025-12-30', name: '年末年始連休', month: 12, day: 30, impact: 'high' },
-  { date: '2025-12-31', name: '大晦日', month: 12, day: 31, impact: 'high' },
-];
+import { fetchHolidays } from '@/lib/holidays';
 
 const EVENTS = [
   { name: '年末年始', months: [12, 1], period: '12月28日〜1月4日', impact: 'very_high', description: '帰省・旅行需要で宿泊費が年間最高水準。都市部・観光地ともに満室続出。' },
@@ -93,12 +38,13 @@ export async function GET(req: NextRequest) {
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
-  const year = parseInt(searchParams.get('year') || '2024');
+  const year = parseInt(searchParams.get('year') || String(new Date().getFullYear()));
   const monthParam = searchParams.get('month');
   const month = monthParam ? parseInt(monthParam) : null;
 
-  const allHolidays = year === 2025 ? HOLIDAYS_2025 : HOLIDAYS_2024;
-  const holidays = month !== null ? allHolidays.filter(h => h.month === month) : allHolidays;
+  const allHolidays = await fetchHolidays(year - 1, year + 1);
+  const yearHolidays = allHolidays.filter(h => parseInt(h.date.slice(0, 4)) === year);
+  const holidays = month !== null ? yearHolidays.filter(h => h.month === month) : yearHolidays;
   const events = month !== null ? EVENTS.filter(e => e.months.includes(month)) : EVENTS;
   const weather_notes = month !== null
     ? (WEATHER_NOTES[month] ?? '天候データなし')

@@ -1,0 +1,35 @@
+{
+  "name": "HotelScope — ホテル料金市場調査",
+  "short_name": "HotelScope",
+  "description": "ホテル土地仕入れ判断のための周辺料金市場調査システム",
+  "start_url": "/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#ffffff",
+  "theme_color": "#1d4ed8",
+  "lang": "ja",
+  "categories": ["business", "productivity"],
+  "icons": [
+    {
+      "src": "/icon",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "/apple-icon",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "ダッシュボード",
+      "short_name": "調査",
+      "description": "ホテル料金調査を開始",
+      "url": "/dashboard",
+      "icons": [{ "src": "/apple-icon", "sizes": "180x180" }]
+    }
+  ]
+}

@@ -3,10 +3,29 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { getGeminiKey } from '@/lib/db';
 import { decryptApiKey } from '@/lib/crypto';
+import { checkRateLimit, getIdentifier } from '@/lib/rate-limit';
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  // ── レート制限チェック ──
+  const userId = (session.user as any)?.id;
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0] ?? req.headers.get('x-real-ip') ?? undefined;
+  const rl = checkRateLimit(getIdentifier(userId, ip), 'analyze');
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: 'リクエスト数の上限に達しました。しばらくお待ちください。' },
+      {
+        status: 429,
+        headers: {
+          'Retry-After': String(Math.ceil((rl.resetAt - Date.now()) / 1000)),
+          'X-RateLimit-Limit': '10',
+          'X-RateLimit-Remaining': '0',
+        },
+      }
+    );
+  }
 
   const { prompt } = await req.json();
   if (!prompt) return NextResponse.json({ error: 'prompt is required' }, { status: 400 });
@@ -32,13 +51,16 @@ export async function POST(req: NextRequest) {
 
   try {
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`,
+      'https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent',
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': apiKey,
+        },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.7, maxOutputTokens: 1024 },
+          generationConfig: { temperature: 0.7, maxOutputTokens: 2048 },
         }),
         signal: AbortSignal.timeout(30_000),
       },
@@ -46,8 +68,9 @@ export async function POST(req: NextRequest) {
 
     if (!res.ok) {
       const err = await res.json();
+      console.error('[analyze] Gemini API error:', err);
       return NextResponse.json(
-        { error: err.error?.message || 'Gemini API エラー' },
+        { error: 'Gemini API でエラーが発生しました' },
         { status: res.status },
       );
     }
@@ -59,6 +82,7 @@ export async function POST(req: NextRequest) {
     if (e?.name === 'TimeoutError') {
       return NextResponse.json({ error: 'Gemini APIがタイムアウトしました' }, { status: 504 });
     }
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    console.error('[analyze] unexpected error:', e);
+    return NextResponse.json({ error: '処理中にエラーが発生しました' }, { status: 500 });
   }
 }

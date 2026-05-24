@@ -1,136 +1,46 @@
-import { neon } from '@neondatabase/serverless';
+/**
+ * lib/db.ts — DB アダプター
+ * DATABASE_URL が設定されていれば Neon (PostgreSQL)、
+ * 設定されていなければ SQLite (better-sqlite3) によるローカル永続化を使用する。
+ *
+ * 動的 import により、使用しないアダプターのネイティブモジュールは
+ * バンドルにも require にも含まれない（Vercel/Edge 環境との共存が可能）。
+ */
 
-function getSql() {
-  const url = process.env.DATABASE_URL;
-  if (!url) throw new Error('DATABASE_URL is not configured');
-  return neon(url);
+import type * as SqliteAdapter from './db-sqlite';
+
+type Adapter = typeof SqliteAdapter;
+
+let _adapter: Adapter | null = null;
+
+async function adapter(): Promise<Adapter> {
+  if (_adapter) return _adapter;
+  _adapter = process.env.DATABASE_URL
+    ? ((await import('./db-neon')) as unknown as Adapter)
+    : await import('./db-sqlite');
+  return _adapter;
 }
 
-export async function initSchema() {
-  const sql = getSql();
-  await sql`
-    CREATE TABLE IF NOT EXISTS users (
-      id               SERIAL PRIMARY KEY,
-      email            TEXT UNIQUE NOT NULL,
-      password_hash    TEXT NOT NULL,
-      name             TEXT NOT NULL,
-      role             TEXT NOT NULL DEFAULT 'user',
-      active           BOOLEAN NOT NULL DEFAULT TRUE,
-      gemini_api_key_enc TEXT,
-      created_at       TIMESTAMPTZ DEFAULT NOW()
-    )
-  `;
-  // 既存テーブルへの列追加（べき等）
-  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'user'`;
-  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS active BOOLEAN NOT NULL DEFAULT TRUE`;
-  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS gemini_api_key_enc TEXT`;
-  await sql`
-    CREATE TABLE IF NOT EXISTS history (
-      id             TEXT PRIMARY KEY,
-      user_id        INTEGER REFERENCES users(id) ON DELETE CASCADE,
-      location       TEXT,
-      search_address TEXT,
-      params         JSONB DEFAULT '{}',
-      result         JSONB DEFAULT '{}',
-      created_at     TIMESTAMPTZ DEFAULT NOW()
-    )
-  `;
+// toAreaKey は純粋関数で両アダプター同一実装 — 直接エクスポート
+export function toAreaKey(lat: number, lng: number): string {
+  return `${lat.toFixed(2)}_${lng.toFixed(2)}`;
 }
 
-export async function getUserByEmail(email: string) {
-  const sql = getSql();
-  const rows = await sql`SELECT * FROM users WHERE email = ${email} LIMIT 1`;
-  return rows[0] ?? null;
-}
-
-export async function createUser(email: string, passwordHash: string, name: string) {
-  const sql = getSql();
-  const rows = await sql`
-    INSERT INTO users (email, password_hash, name)
-    VALUES (${email}, ${passwordHash}, ${name})
-    RETURNING id
-  `;
-  return { lastInsertRowid: rows[0].id };
-}
-
-export async function saveHistory(
-  userId: number,
-  id: string,
-  location: string,
-  searchAddress: string,
-  params: object,
-  result: object,
-) {
-  const sql = getSql();
-  await sql`
-    INSERT INTO history (id, user_id, location, search_address, params, result)
-    VALUES (
-      ${id}, ${userId}, ${location}, ${searchAddress},
-      ${JSON.stringify(params)}::jsonb, ${JSON.stringify(result)}::jsonb
-    )
-    ON CONFLICT (id) DO UPDATE SET
-      location       = EXCLUDED.location,
-      search_address = EXCLUDED.search_address,
-      params         = EXCLUDED.params,
-      result         = EXCLUDED.result,
-      created_at     = NOW()
-  `;
-  await sql`
-    DELETE FROM history
-    WHERE user_id = ${userId}
-      AND id NOT IN (
-        SELECT id FROM history
-        WHERE user_id = ${userId}
-        ORDER BY created_at DESC
-        LIMIT 50
-      )
-  `;
-}
-
-export async function getHistory(userId: number) {
-  const sql = getSql();
-  return await sql`
-    SELECT * FROM history
-    WHERE user_id = ${userId}
-    ORDER BY created_at DESC
-    LIMIT 50
-  `;
-}
-
-export async function deleteHistory(id: string, userId: number) {
-  const sql = getSql();
-  await sql`DELETE FROM history WHERE id = ${id} AND user_id = ${userId}`;
-}
-
-// --- Admin functions ---
-export async function getAllUsers() {
-  const sql = getSql();
-  return await sql`
-    SELECT id, email, name, role, active, created_at,
-           (SELECT COUNT(*) FROM history WHERE user_id = users.id) AS history_count
-    FROM users
-    ORDER BY created_at DESC
-  `;
-}
-
-export async function setUserActive(userId: number, active: boolean) {
-  const sql = getSql();
-  await sql`UPDATE users SET active = ${active} WHERE id = ${userId}`;
-}
-
-export async function deleteUser(userId: number) {
-  const sql = getSql();
-  await sql`DELETE FROM users WHERE id = ${userId}`;
-}
-
-// --- User profile / API key ---
-export async function updateGeminiKey(userId: number, encryptedKey: string | null) {
-  const sql = getSql();
-  await sql`UPDATE users SET gemini_api_key_enc = ${encryptedKey} WHERE id = ${userId}`;
-}
-
-export async function getGeminiKey(userId: number): Promise<string | null> {
-  const sql = getSql();
-  const rows = await sql`SELECT gemini_api_key_enc FROM users WHERE id = ${userId} LIMIT 1`;
-  return rows[0]?.gemini_api_key_enc ?? null;
-}
+export async function initSchema()            { return (await adapter()).initSchema(); }
+export async function getUserByEmail(email: string)  { return (await adapter()).getUserByEmail(email); }
+export async function createUser(email: string, passwordHash: string, name: string) { return (await adapter()).createUser(email, passwordHash, name); }
+export async function getAllUsers()           { return (await adapter()).getAllUsers(); }
+export async function setUserActive(userId: number, active: boolean) { return (await adapter()).setUserActive(userId, active); }
+export async function deleteUser(userId: number) { return (await adapter()).deleteUser(userId); }
+export async function updateGeminiKey(userId: number, encryptedKey: string | null) { return (await adapter()).updateGeminiKey(userId, encryptedKey); }
+export async function getGeminiKey(userId: number) { return (await adapter()).getGeminiKey(userId); }
+export async function saveHistory(userId: number, id: string, location: string, searchAddress: string, params: object, result: object) { return (await adapter()).saveHistory(userId, id, location, searchAddress, params, result); }
+export async function getHistory(userId: number) { return (await adapter()).getHistory(userId); }
+export async function deleteHistory(id: string, userId: number) { return (await adapter()).deleteHistory(id, userId); }
+export async function saveSnapshot(params: Parameters<Adapter['saveSnapshot']>[0]) { return (await adapter()).saveSnapshot(params); }
+export async function bulkInsertSnapshots(rows: Parameters<Adapter['bulkInsertSnapshots']>[0]) { return (await adapter()).bulkInsertSnapshots(rows); }
+export async function getSnapshots(areaKey: string, months?: number) { return (await adapter()).getSnapshots(areaKey, months); }
+export async function getSnapshotCount(areaKey: string) { return (await adapter()).getSnapshotCount(areaKey); }
+export async function saveHotelPrice(params: Parameters<Adapter['saveHotelPrice']>[0]) { return (await adapter()).saveHotelPrice(params); }
+export async function getHotelPriceCalendar(areaKey: string, weeksAhead?: number) { return (await adapter()).getHotelPriceCalendar(areaKey, weeksAhead); }
+export async function getAnnualADRReport(areaKey: string) { return (await adapter()).getAnnualADRReport(areaKey); }

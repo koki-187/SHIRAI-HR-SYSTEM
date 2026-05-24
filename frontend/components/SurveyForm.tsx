@@ -2,6 +2,14 @@
 import { useState, useEffect } from 'react';
 import { SurveyParams } from '@/types';
 
+const DATA_SOURCE_OPTIONS = [
+  { value: 'auto',    label: '🤖 自動',          desc: '最適ソースを自動選択' },
+  { value: 'seed',    label: '📊 実在データ',     desc: '主要都市の実在ホテル' },
+  { value: 'rakuten', label: '🔴 楽天トラベル',   desc: 'リアルタイム取得' },
+  { value: 'jalan',   label: '🟢 じゃらん',       desc: 'リアルタイム取得' },
+  { value: 'booking', label: '🔵 Booking.com',    desc: 'リアルタイム取得' },
+] as const;
+
 interface Props {
   onSubmit: (params: SurveyParams) => void;
   loading: boolean;
@@ -53,44 +61,80 @@ export default function SurveyForm({ onSubmit, loading }: Props) {
       return;
     }
     setSavingKey(true);
-    const res = await fetch('/api/user/profile', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ apiKey: newKey.trim() }),
-    });
-    const data = await res.json();
-    setSavingKey(false);
-    if (res.ok) {
-      setHasApiKey(true);
-      setShowKeyInput(false);
-      setNewKey('');
-      setKeyMsg('APIキーを保存しました');
-      setTimeout(() => setKeyMsg(''), 3000);
-    } else {
-      setKeyMsg(data.error || '保存に失敗しました');
+    try {
+      const res = await fetch('/api/user/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apiKey: newKey.trim() }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setHasApiKey(true);
+        setShowKeyInput(false);
+        setNewKey('');
+        setKeyMsg('APIキーを保存しました');
+        setTimeout(() => setKeyMsg(''), 3000);
+      } else {
+        setKeyMsg(data.error || '保存に失敗しました');
+      }
+    } catch {
+      setKeyMsg('ネットワークエラーが発生しました');
+    } finally {
+      setSavingKey(false);
     }
   };
 
   const deleteApiKey = async () => {
     if (!confirm('保存済みのAPIキーを削除しますか？')) return;
-    await fetch('/api/user/profile', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ apiKey: '' }),
-    });
-    setHasApiKey(false);
-    setKeyMsg('APIキーを削除しました');
-    setTimeout(() => setKeyMsg(''), 3000);
+    try {
+      const res = await fetch('/api/user/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apiKey: '' }),
+      });
+      if (res.ok) {
+        setHasApiKey(false);
+        setKeyMsg('APIキーを削除しました');
+        setTimeout(() => setKeyMsg(''), 3000);
+      } else {
+        const data = await res.json();
+        setKeyMsg(data.error || '削除に失敗しました');
+      }
+    } catch {
+      setKeyMsg('ネットワークエラーが発生しました');
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // 場所が空白のみの場合はエラー
+    if (!params.location.trim()) {
+      alert('調査エリアを入力してください');
+      return;
+    }
+    // チェックアウト日がチェックイン日以前の場合はエラー
+    if (params.check_in && params.check_out && params.check_out <= params.check_in) {
+      alert('チェックアウト日はチェックイン日より後の日付を指定してください');
+      return;
+    }
     onSubmit({ ...params, gemini_api_key: '' }); // サーバー側でDB取得
   };
 
   return (
     <div className="bg-white rounded-xl shadow-md p-6">
       <h2 className="text-xl font-bold text-gray-800 mb-4">エリア調査</h2>
+      {loading && (
+        <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 flex items-center gap-3">
+          <svg className="animate-spin h-4 w-4 text-blue-500 flex-shrink-0" viewBox="0 0 24 24" fill="none">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+          </svg>
+          <div>
+            <p className="text-sm font-medium text-blue-700">周辺ホテルデータを収集中...</p>
+            <p className="text-xs text-blue-500 mt-0.5">楽天トラベル / Booking.com からデータ取得中です</p>
+          </div>
+        </div>
+      )}
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -101,7 +145,7 @@ export default function SurveyForm({ onSubmit, loading }: Props) {
             value={params.location}
             onChange={e => setParams({...params, location: e.target.value})}
             placeholder="例: 渋谷区、新宿駅、大阪市北区"
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-4 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             required
           />
         </div>
@@ -113,7 +157,7 @@ export default function SurveyForm({ onSubmit, loading }: Props) {
               type="date"
               value={params.check_in}
               onChange={e => setParams({...params, check_in: e.target.value})}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
           <div>
@@ -122,7 +166,7 @@ export default function SurveyForm({ onSubmit, loading }: Props) {
               type="date"
               value={params.check_out}
               onChange={e => setParams({...params, check_out: e.target.value})}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
         </div>
@@ -133,7 +177,7 @@ export default function SurveyForm({ onSubmit, loading }: Props) {
             <select
               value={params.hotel_type}
               onChange={e => setParams({...params, hotel_type: e.target.value as SurveyParams['hotel_type']})}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-2 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="all">すべて</option>
               <option value="business">ビジネスホテル</option>
@@ -161,12 +205,7 @@ export default function SurveyForm({ onSubmit, loading }: Props) {
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">データソース</label>
           <div className="flex gap-3 flex-wrap">
-            {[
-              { value: 'auto', label: '🤖 自動', desc: '最適ソースを自動選択' },
-              { value: 'seed', label: '📊 実在データ', desc: '主要都市の実在ホテル' },
-              { value: 'rakuten', label: '🔴 楽天トラベル', desc: 'リアルタイム取得' },
-              { value: 'mock', label: '🧪 モック', desc: 'テスト用データ' },
-            ].map(opt => (
+            {DATA_SOURCE_OPTIONS.map(opt => (
               <label key={opt.value} className={`flex items-center gap-2 cursor-pointer px-3 py-2 rounded-lg border transition text-sm ${
                 params.data_source === opt.value
                   ? 'border-blue-500 bg-blue-50 text-blue-700'
@@ -252,17 +291,24 @@ export default function SurveyForm({ onSubmit, loading }: Props) {
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition disabled:opacity-50 flex items-center justify-center gap-2"
+          className="w-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold py-3 rounded-lg transition disabled:opacity-60 flex items-center justify-center gap-2 select-none"
         >
           {loading ? (
             <>
-              <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
+              <svg className="animate-spin h-5 w-5 flex-shrink-0" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
               </svg>
-              調査中... (30〜60秒)
+              <span>調査中… 30〜60秒かかります</span>
             </>
-          ) : '調査開始'}
+          ) : (
+            <>
+              <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+              </svg>
+              調査開始
+            </>
+          )}
         </button>
       </form>
     </div>

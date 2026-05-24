@@ -1,6 +1,7 @@
 import { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import bcrypt from 'bcryptjs';
+import { timingSafeEqual } from 'crypto';
 import { getUserByEmail } from './db';
 
 export const authOptions: NextAuthOptions = {
@@ -14,13 +15,17 @@ export const authOptions: NextAuthOptions = {
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
 
-        const adminEmail = process.env.ADMIN_EMAIL;
-        const adminPassword = process.env.ADMIN_PASSWORD;
+        const adminEmail = process.env.ADMIN_EMAIL || '';
+        const adminPassword = process.env.ADMIN_PASSWORD || '';
 
-        // 管理者ログイン（.envで設定した専用アカウント）
-        if (adminEmail && adminPassword &&
-            credentials.email === adminEmail &&
-            credentials.password === adminPassword) {
+        // 管理者ログイン（.envで設定した専用アカウント）— タイミング攻撃対策
+        const emailMatch = credentials.email === adminEmail;
+        const passBuffer = Buffer.from(credentials.password);
+        const adminBuffer = Buffer.from(adminPassword);
+        const passwordMatch = adminPassword.length > 0 &&
+          passBuffer.length === adminBuffer.length &&
+          timingSafeEqual(passBuffer, adminBuffer);
+        if (adminEmail && emailMatch && passwordMatch) {
           return {
             id: 'admin',
             email: adminEmail,

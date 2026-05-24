@@ -11,3 +11,22 @@ body {
   color: rgb(var(--foreground-rgb));
   background: rgb(var(--background-rgb));
 }
+
+/* PWA: iOS safe area + スタンドアロンモード対応 */
+@supports (padding: env(safe-area-inset-top)) {
+  .safe-top    { padding-top:    env(safe-area-inset-top); }
+  .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+  .safe-left   { padding-left:   env(safe-area-inset-left); }
+  .safe-right  { padding-right:  env(safe-area-inset-right); }
+}
+
+/* スタンドアロンモード時のスクロールバー非表示 */
+@media (display-mode: standalone) {
+  body { overscroll-behavior-y: none; }
+}
+
+/* タッチ操作の最適化 */
+button, [role="button"], [role="tab"] {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
